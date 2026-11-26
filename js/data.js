@@ -53,7 +53,7 @@
 (function () {
   'use strict';
   const BT = window.BT; const u = BT.u;
-  BT.DATA_VERSION = 15;
+  BT.DATA_VERSION = 16;
 
   /* RNG determinístico (los mismos datos en cada restablecimiento) */
   function rngFactory(seed) { let a = seed >>> 0; return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

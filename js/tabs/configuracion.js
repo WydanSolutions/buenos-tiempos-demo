@@ -14,7 +14,7 @@
     ['shifts.edit', 'Editar el planificador de turnos', 'calendar-days'],
     ['staff.manage', 'Gestionar legajos, licencias y faltas', 'id-card'],
     ['money.read', 'Ver cobranzas y finanzas', 'wallet'],
-    ['money.write', 'Emitir facturas y registrar pagos', 'receipt'],
+    ['money.write', 'Cargar facturas y registrar pagos', 'receipt'],
     ['audit.read', 'Consultar auditoría de accesos', 'history'],
     ['config', 'Configurar el sistema', 'settings'],
   ];
@@ -152,7 +152,7 @@
       ratioFields.map(([k, t, h]) => '<div class="cfg-param"><div><div class="strong" style="font-size:var(--fs-md)">' + t + '</div><div class="muted" style="font-size:var(--fs-xs)">' + h + '</div></div><input class="input num" type="number" min="1" max="40" data-r="' + k + '" value="' + R[k] + '" style="text-align:right"></div>').join('') +
       '<div class="sec-t mt-16">Vista previa · cuidadoras requeridas</div><div class="grid g-2" id="cfgPrev"></div></div>' +
       '<div class="card-f row between"><span class="muted" style="font-size:var(--fs-sm)" id="cfgDirty">Sin cambios</span><button class="btn primary sm" data-act="save-ratio" disabled>' + ic('check') + 'Guardar parámetros</button></div></section>' +
-      '<div class="col gap-16"><section class="card"><div class="card-h"><div><h3>' + ic('receipt') + 'Cobranzas y facturación</h3><div class="sub">Se aplican a cuotas y e-Factura</div></div></div><div class="card-b"><form class="form-grid" id="cfgBill">' +
+      '<div class="col gap-16"><section class="card"><div class="card-h"><div><h3>' + ic('receipt') + 'Cobranzas y facturación</h3><div class="sub">Se aplican a cuotas y facturas</div></div></div><div class="card-b"><form class="form-grid" id="cfgBill">' +
       ui.field({ label: 'Día de vencimiento de la cuota', name: 'dueDay', type: 'number', value: BT.db.settings.dueDay, attrs: 'min="1" max="28"', hint: 'Pasado este día, el saldo se considera vencido' }) +
       ui.field({ label: 'IVA servicios (%)', name: 'iva', type: 'number', value: Math.round(BT.db.settings.iva * 100), attrs: 'min="0" max="22"', hint: 'Tasa mínima aplicada en la demo' }) +
       '</form></div><div class="card-f row" style="justify-content:flex-end"><button class="btn sm" data-act="save-bill">' + ic('check') + 'Guardar</button></div></section>' +

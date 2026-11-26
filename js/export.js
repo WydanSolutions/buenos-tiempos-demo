@@ -24,7 +24,7 @@
   .num,td.num,.money{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
   @page{size:A4 __ORIENT__;margin:16mm 15mm 20mm 15mm;
     @bottom-left{content:"__EMITIDO__";font:7.5pt InterVar,"Segoe UI",sans-serif;color:#9d988f}
-    @bottom-center{content:"Desarrollado por Wydan Solutions";font:7.5pt InterVar,"Segoe UI",sans-serif;color:#9d988f}
+    @bottom-center{content:"Desarrollado por  " url(__WYDAN__);vertical-align:middle;font:7.5pt InterVar,"Segoe UI",sans-serif;color:#9d988f}
     @bottom-right{content:"Página " counter(page) " de " counter(pages);font:600 7.5pt InterVar,"Segoe UI",sans-serif;color:#7b7770}
     @top-right{content:"Residencial Buenos Tiempos · __TITLE__";font:7.5pt InterVar,"Segoe UI",sans-serif;color:#9d988f}
   }
@@ -84,23 +84,33 @@
   .tl .it::before{content:"";position:absolute;left:-17px;top:8px;width:8px;height:8px;border-radius:50%;background:var(--g);box-shadow:0 0 0 2px #fff}
   .screen-foot{display:none;justify-content:space-between;margin-top:36px;padding-top:10px;border-top:1px solid var(--line);font-size:7.5pt;color:var(--ink4)}
   .wm{position:fixed;right:15mm;bottom:8mm;font-size:7pt;color:#c4bfb5}
+  .screen-foot .wy{display:inline-flex;align-items:center;gap:7px}.screen-foot .wy img{height:26px;width:auto}
   `;
 
   const userLine = () => { const usr = BT.state.user || { nombre: 'Sistema', role: '' }; return usr.nombre + (usr.role ? ' (' + (BT.ROLES[usr.role] ? BT.ROLES[usr.role].label : usr.role) + ')' : ''); };
   const cssStr = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  /* Logo de Wydan para el pie de página impreso: SVG que envuelve el PNG para fijar su tamaño en el margen */
+  let _wy = '';
+  const wydanSvg = () => {
+    if (_wy || !BT.WYDAN) return _wy || 'none';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="62" height="28" viewBox="0 0 420 192"><image width="420" height="192" href="' + BT.WYDAN + '" xlink:href="' + BT.WYDAN + '"/></svg>';
+    _wy = 'data:image/svg+xml;base64,' + btoa(svg);
+    return _wy;
+  };
 
   /** Arma el documento HTML completo */
   doc.build = function ({ title, subtitle = '', sede = BT.state.sede, code = '', body = '', landscape = false, kicker = 'Documento' }) {
     const sObj = BT.db.sedes.find((x) => x.id === sede);
     const now = new Date();
     const emitido = 'Emitido el ' + u.fmtDate(now) + ' a las ' + u.fmtTime(now) + ' por ' + userLine();
-    const css = DOC_CSS.replace('__FONT__', BT.FONT_DATA || '').replace('__ORIENT__', landscape ? 'landscape' : 'portrait').replace('__EMITIDO__', cssStr(emitido)).replace('__TITLE__', cssStr(title));
+    const css = DOC_CSS.replace('__FONT__', BT.FONT_DATA || '').replace('__ORIENT__', landscape ? 'landscape' : 'portrait').replace('__EMITIDO__', cssStr(emitido)).replace('__TITLE__', cssStr(title)).replace('__WYDAN__', wydanSvg());
     const sedeLine = sObj ? esc(sObj.nombre) + ' · ' + esc(sObj.direccion) + ', ' + esc(sObj.barrio) + ' · Tel. ' + esc(sObj.tel) : 'Sedes BT1 (Malvín) y BT2 (Unión) · Montevideo';
     return '<!doctype html><html lang="es-UY"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body><div class="paper">' +
       '<header class="dh"><div class="brand"><img src="' + BT.LOGO + '" alt=""><div><div class="n">Residencial Buenos Tiempos</div><div class="s">' + sedeLine + '<br>' + esc(BT.db.meta.company) + ' · RUT ' + esc(BT.db.meta.rut) + '</div></div></div>' +
       '<div class="dmeta"><div class="k">' + esc(kicker) + '</div><h1>' + esc(title) + '</h1>' + (subtitle ? '<div class="sub">' + subtitle + '</div>' : '') + '<div class="code">' + esc(code || ('BT-' + now.getFullYear() + u.pad(now.getMonth() + 1) + u.pad(now.getDate()) + '-' + String(now.getHours()) + u.pad(now.getMinutes()))) + '</div></div></header>' +
       body +
-      '<div class="screen-foot"><span>' + esc(emitido) + '</span><span>Desarrollado por Wydan Solutions</span><span>Página 1 de 1</span></div>' +
+      '<div class="screen-foot"><span>' + esc(emitido) + '</span><span class="wy">Desarrollado por <img src="' + BT.WYDAN + '" alt="Wydan Solutions"></span><span>Página 1 de 1</span></div>' +
       '</div></body></html>';
   };
 

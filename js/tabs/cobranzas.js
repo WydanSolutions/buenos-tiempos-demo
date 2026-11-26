@@ -1,19 +1,26 @@
 /* ==========================================================================
-   Cobranzas — cuotas, extras, estado de cuenta, recibos, garantías, e-Factura
+   Cobranzas — cuotas, extras, estado de cuenta, recibos, garantías y facturas (cargadas desde el sistema de facturación y guardadas en Google Drive)
    ========================================================================== */
 (function () {
   'use strict';
   const BT = window.BT; const u = BT.u; const ui = BT.ui; const ic = BT.ic; const esc = u.esc;
   const C = (BT.cob = {});
 
-  /* Para la demo: algunas e-Facturas del mes en curso quedan pendientes de emitir */
+  /* Para la demo: algunas facturas del mes en curso quedan pendientes de cargar */
   const origSeed = BT.seed;
   BT.seed = function () {
     const db = origSeed.apply(this, arguments);
     const cur = u.ym(u.today());
     const pend = ['r2', 'r5', 'r9', 'r15', 'r21', 'r25', 'r27'];
     db.invoices = db.invoices.filter((i) => !(i.mes === cur && pend.includes(i.residentId)));
-    db.invoices.forEach((i, k) => { i.cae = '9024' + String(1180000 + k * 37).padStart(7, '0'); i.serie = 'A'; });
+    const staff = ['Paula Benavídez', 'Paula Benavídez', 'Carolina Galarza'];
+    db.invoices.forEach((i, k) => {
+      i.cae = '9024' + String(1180000 + k * 37).padStart(7, '0'); i.serie = 'A'; i.estado = 'En Drive';
+      const r = db.residents.find((x) => x.id === i.residentId);
+      const d = u.toDate(i.fecha); d.setDate(2 + (k % 4)); i.fecha = u.iso(d);
+      i.cargadaPor = staff[k % 3]; i.cargadaTs = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10 + (k % 7), (k * 13) % 60).getTime();
+      i.file = { name: i.nro.replace(/\s+/g, '-') + ' · ' + (r ? r.apellido + ' ' + r.nombre : 'Residente') + '.pdf', size: 88000 + ((k * 7919) % 90000), type: 'application/pdf', seeded: true };
+    });
     return db;
   };
 
@@ -34,6 +41,58 @@
     .cfe-row{display:flex;justify-content:space-between;padding:5px 0;font-size:var(--fs-md)}
     .cfe-row b{font-variant-numeric:tabular-nums}
     .cfe-foot{display:flex;gap:14px;align-items:center;padding:14px 18px;border-top:1px dashed var(--line-strong);background:var(--surface-2);font-size:var(--fs-xs);color:var(--ink-600)}
+    .gdrive{width:20px;height:auto;flex:none;display:inline-block;vertical-align:middle}
+    .gdrive.lg{width:40px}
+    .btn .gdrive{width:17px;margin-right:2px}
+    .btn.primary .gdrive{background:#fff;border-radius:5px;padding:2px;width:20px}
+    .crumbs{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px;font-weight:550;color:var(--ink-700)}
+    .crumbs .ic{color:var(--ink-400)}
+    .fname{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:var(--fs-xs);color:var(--ink-600);font-weight:600;word-break:break-all}
+    .drive-dest{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:linear-gradient(135deg,#f5f9ff,#fff)}
+    .drive-dest .gdrive{width:30px}
+    .drive-card-in{display:flex;align-items:center;gap:16px;padding:18px 20px;flex-wrap:wrap}
+    .fx-steps{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+    .fx-steps>div{padding:14px 20px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
+    .fx-steps>div+div{border-left:1px dashed var(--line-strong)}
+    .fx-steps span{grid-row:span 2;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--brand-600);color:#fff;font-weight:700;font-size:var(--fs-sm)}
+    .fx-steps b{font-size:var(--fs-md)}
+    .fx-steps small{color:var(--ink-500);font-size:var(--fs-xs)}
+    .fchip{display:inline-flex;align-items:center;gap:6px;max-width:230px;padding:3px 9px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);font-size:var(--fs-xs);color:var(--ink-700)}
+    .drive-ok{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-xs);font-weight:600;color:var(--ok)}
+    .drive-ok .gdrive{width:16px}
+    .fx-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:20px;align-items:start}
+    .fx-grid.rev{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+    .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:22px 16px;border:2px dashed var(--line-strong);border-radius:var(--r-lg);background:var(--surface-2);cursor:pointer;transition:all var(--d-fast) var(--ease);color:var(--ink-500)}
+    .drop .ic{width:30px;height:30px;color:var(--brand-600)}
+    .drop .dt{font-weight:650;color:var(--ink-900);font-size:var(--fs-md);word-break:break-all}
+    .drop .dd{font-size:var(--fs-xs)}
+    .drop:hover,.drop.over{border-color:var(--brand-500);background:var(--brand-50)}
+    .drop.has{border-style:solid;border-color:var(--brand-300);background:var(--brand-50)}
+    .drop.need{animation:shake 400ms;border-color:var(--danger)}
+    .fprev{border:1px solid var(--line);border-radius:var(--r-lg);background:#eceae4;overflow:hidden;min-height:520px;display:flex;flex-direction:column}
+    .fprev-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-500);text-align:center;padding:30px}
+    .fprev-empty .ic{width:44px;height:44px;color:var(--ink-300);stroke-width:1.5}
+    .fprev-empty b{color:var(--ink-700)}
+    .fprev-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);font-size:var(--fs-sm)}
+    .fprev-bar b{display:block;color:var(--ink-900)}
+    .fprev-bar span{color:var(--ink-500);font-size:var(--fs-xs)}
+    .fprev-body{flex:1;display:flex;min-height:480px}
+    .fprev-pdf{flex:1;width:100%;min-height:560px;border:0;background:#fff}
+    .fprev-img{flex:1;padding:14px;display:flex;align-items:flex-start;justify-content:center;max-height:640px;overflow:auto}
+    .fprev-img img{max-width:100%;height:auto;box-shadow:0 6px 24px rgba(0,0,0,.14);border-radius:4px;background:#fff}
+    .fprev-doc{flex:1;padding:16px;max-height:640px;overflow:auto}
+    .fprev-doc .cfe{box-shadow:0 6px 24px rgba(0,0,0,.12)}
+    .up-wrap{display:flex;flex-direction:column;gap:16px;max-width:520px;margin:8px auto}
+    .up-file{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-md)}
+    .up-file .ic{width:28px;height:28px;color:var(--brand-600)}
+    .up-file b{display:block;word-break:break-all}
+    .up-file span{font-size:var(--fs-xs);color:var(--ink-500)}
+    .emit-step .es-ic .gdrive{width:16px}
+    .up-done{text-align:center;padding:10px 0 4px;max-width:560px;margin:0 auto}
+    .up-done h3{margin-top:12px;font-size:var(--fs-xl)}
+    .up-ok{width:64px;height:64px;border-radius:50%;display:inline-grid;place-items:center;background:var(--ok);color:#fff}
+    .up-ok svg{width:32px;height:32px}
+    @media (max-width:900px){.fx-grid,.fx-grid.rev{grid-template-columns:1fr}.fx-steps{grid-template-columns:1fr}.fx-steps>div+div{border-left:0;border-top:1px dashed var(--line-strong)}.fprev{min-height:380px}}
     .qr{width:84px;height:84px;flex:none;background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px}
     .emit-steps{display:flex;flex-direction:column;gap:12px;margin:6px 0 4px}
     .emit-step{display:flex;align-items:center;gap:12px;font-size:var(--fs-md);color:var(--ink-400);transition:color var(--d) var(--ease)}
@@ -228,7 +287,7 @@
         { label: 'Fecha', render: (m) => u.fmtDate(m.fecha), width: '78px' }, { label: 'Concepto', render: (m) => esc(m.concepto) },
         { label: 'Cargo', align: 'num', render: (m) => (m.cargo ? u.fmtMoney(m.cargo) : '') }, { label: 'Pago', align: 'num', render: (m) => (m.abono ? u.fmtMoney(m.abono) : '') }, { label: 'Saldo', align: 'num', render: (m) => u.fmtMoney(m.saldo) },
       ], mv, { compact: true, foot: '<tr><td></td><td>Totales</td><td class="num">' + u.fmtMoney(a.cargos) + '</td><td class="num">' + u.fmtMoney(a.pagos) + '</td><td class="num">' + u.fmtMoney(a.saldo) + '</td></tr>' })) +
-      D.note('<b>Formas de pago:</b> transferencia a la cuenta BROU 001-234567-00001 a nombre de Galauru SAS, indicando el nombre del residente; débito automático o efectivo en administración (lunes a viernes de 9 a 17). Vencimiento: día ' + BT.db.settings.dueDay + ' de cada mes. Las e-Facturas se envían por correo electrónico al referente.');
+      D.note('<b>Formas de pago:</b> transferencia a la cuenta BROU 001-234567-00001 a nombre de Galauru SAS, indicando el nombre del residente; débito automático o efectivo en administración (lunes a viernes de 9 a 17). Vencimiento: día ' + BT.db.settings.dueDay + ' de cada mes. Las facturas se emiten desde el sistema de facturación y se envían por correo al referente.');
     D.open({ title: 'Estado de cuenta', subtitle: esc(BT.fullName(r)) + ' · al ' + u.fmtDate(u.today()), sede: r.sede, kicker: 'Cobranzas', code: 'EC-' + rid.toUpperCase() + '-' + C.curMes().replace('-', ''), body, residentId: rid, filename: 'Estado de cuenta ' + BT.fullName(r) });
   };
   C.reciboPDF = function (pid) {
@@ -244,7 +303,7 @@
       D.section('Datos del pago', D.kv([['Fecha de pago', u.fmtDate(p.fecha)], ['Medio de pago', esc(p.medio)], ['Residente', esc(BT.fullName(r))], ['Sede y habitación', esc(BT.sedeName(r.sede)) + ' · Hab. ' + r.habitacion + r.cama], ['Referente', esc(r.referente.nombre) + ' · CI ' + u.fmtCI(r.referente.ci || '1234567')], ['Saldo luego del pago', D.money(BT.account(r.id).saldo)]], 2)) +
       (imp.length ? D.section('Imputación', D.table([{ label: 'Período', render: (x) => (x.mes ? u.cap(u.fmtMonth(x.mes)) : 'Saldo a favor') }, { label: 'Importe imputado', align: 'num', render: (x) => u.fmtMoney(x.monto) }], imp, { compact: true, foot: '<tr><td>Total</td><td class="num">' + u.fmtMoney(p.monto) + '</td></tr>' })) : '') +
       D.signatures(['Por Galauru SAS — Administración', 'Recibí conforme']) +
-      D.note('Este recibo acredita el pago. La e-Factura (CFE) correspondiente se emite electrónicamente y se envía al correo del referente.', '');
+      D.note('Este recibo acredita el pago. La factura correspondiente se emite desde el sistema de facturación de Galauru SAS y queda archivada en Google Drive.', '');
     D.open({ title: 'Recibo ' + p.recibo, subtitle: esc(BT.fullName(r)) + ' · ' + u.fmtDate(p.fecha), sede: r.sede, kicker: 'Cobranzas', code: p.recibo, body, residentId: r.id, filename: 'Recibo ' + p.recibo });
   };
 
@@ -253,49 +312,191 @@
     const r = BT.resident(inv.residentId); const s = BT.db.sedes.find((x) => x.id === inv.sede);
     const lines = C.chargesOf(inv.residentId, inv.mes);
     return '<div class="cfe"><div class="cfe-h"><div><div class="muted" style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + esc(inv.tipo) + ' · Serie ' + esc(inv.serie || 'A') + '</div><div style="font-size:20px;font-weight:700;letter-spacing:-.02em">Nº ' + esc(inv.nro.replace(/^A\s*/, '')) + '</div><div class="muted" style="font-size:var(--fs-sm)">' + esc(BT.db.meta.company) + ' · RUT ' + esc(BT.db.meta.rut) + '<br>' + esc(s ? s.direccion : '') + '</div></div>' +
-      '<div style="text-align:right">' + ui.badge(inv.estado, inv.estado.includes('Aceptada') ? 'ok' : 'warn', { icon: 'badge-check' }) + '<div class="muted mt-8" style="font-size:var(--fs-sm)">Emisión ' + u.fmtDate(inv.fecha) + '<br>Período ' + u.fmtMonth(inv.mes) + '</div></div></div>' +
+      '<div style="text-align:right">' + ui.badge('Aceptada DGI', 'ok', { icon: 'badge-check' }) + '<div class="muted mt-8" style="font-size:var(--fs-sm)">Emisión ' + u.fmtDate(inv.fecha) + '<br>Período ' + u.fmtMonth(inv.mes) + '</div></div></div>' +
       '<div class="cfe-b"><div class="muted" style="font-size:var(--fs-sm);margin-bottom:8px">Receptor: <b style="color:var(--ink-900)">' + esc(r.referente.nombre) + '</b> por ' + esc(BT.fullName(r)) + ' (consumidor final)</div>' +
       lines.map((l) => '<div class="cfe-row"><span>' + esc(l.concepto) + (l.cantidad ? ' <span class="subtle">× ' + l.cantidad + '</span>' : '') + '</span><b>' + u.fmtMoney(l.monto) + '</b></div>').join('') +
       '<hr class="hr" style="margin:10px 0"><div class="cfe-row"><span class="muted">Neto gravado</span><b>' + u.fmtMoney(inv.neto) + '</b></div><div class="cfe-row"><span class="muted">IVA tasa mínima ' + Math.round(BT.db.settings.iva * 100) + ' %</span><b>' + u.fmtMoney(inv.iva) + '</b></div><div class="cfe-row" style="font-size:var(--fs-lg)"><span><b>Total</b></span><b>' + u.fmtMoney(inv.total) + '</b></div></div>' +
       '<div class="cfe-foot">' + C.qr(inv.nro) + '<div>Código de seguridad <b>' + esc((inv.cae || '').slice(-6)) + '</b><br>CAE Nº <b>' + esc(inv.cae || '—') + '</b> · Rango A 0000001 – A 0099999<br>Puede verificar el comprobante en <b>www.efactura.dgi.gub.uy</b><br>IVA al día · Resolución DGI (simulada para la demo)</div></div></div>';
   };
-  C.emitir = function () {
-    const pend = C.pendingInvoices();
-    if (!pend.length) return ui.toast('No hay e-Facturas pendientes', { type: 'info', sub: 'Todo el mes está facturado' });
-    const total = u.sum(pend, (r) => C.totalMes(r.id, C.curMes()));
-    const steps = [['file-signature', 'Generando y firmando CFE con certificado digital'], ['send', 'Enviando a DGI'], ['badge-check', 'Recibiendo constancia de aceptación (CAE)'], ['mail', 'Enviando por correo a los referentes']];
+  /* ---------------- Facturas: se emiten en el sistema de facturación y se cargan acá ---------------- */
+  const MESES_N = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  C.DRIVE_SVG = '<svg class="gdrive" viewBox="0 0 87.3 78" aria-hidden="true"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>';
+  C.driveRoot = () => ((BT.db && BT.db.settings && BT.db.settings.driveFolder) || 'Buenos Tiempos/Facturas').split('/').filter(Boolean);
+  C.driveConfig = function () {
     ui.modal({
-      title: 'Emitir e-Facturas de ' + u.fmtMonth(C.curMes()), sub: pend.length + ' comprobantes (e-Ticket) por ' + u.fmtMoney(total) + ' · IVA ' + Math.round(BT.db.settings.iva * 100) + ' % incluido', icon: 'receipt',
-      body: '<div class="list" style="margin:0 -24px 8px">' + pend.slice(0, 7).map((r) => '<div class="li" style="padding:8px 24px">' + ui.avatar(BT.fullName(r), { size: 'sm' }) + '<div class="grow"><div class="t">' + esc(BT.fullName(r)) + '</div><div class="d">' + r.sede + ' · Hab. ' + r.habitacion + r.cama + ' · ' + esc(r.referente.nombre) + '</div></div><b class="num">' + u.fmtMoney(C.totalMes(r.id, C.curMes())) + '</b></div>').join('') + '</div>' +
-        '<div class="emit-steps hidden" id="emSteps">' + steps.map(([i, t]) => '<div class="emit-step"><span class="es-ic">' + ic(i, 'ic-sm') + '</span>' + t + '</div>').join('') + '</div><div class="bar mt-16 hidden" id="emBar"><span style="width:0;animation:none;transition:width 500ms var(--ease-out)"></span></div>',
-      foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-go>' + ic('send') + 'Emitir ' + pend.length + ' e-Facturas</button>',
+      title: 'Carpeta de Google Drive', icon: 'folder-cog', sub: 'Dónde se guardan las facturas cargadas',
+      body: '<div class="drive-dest mb-16">' + C.DRIVE_SVG + '<div class="grow"><div class="strong" style="font-size:var(--fs-sm)">facturas@buenostiempos.com.uy</div><div class="muted" style="font-size:var(--fs-xs)">Cuenta de Google conectada</div></div>' + ui.badge('Conectada', 'ok', { icon: 'badge-check' }) + '</div>' +
+        ui.field({ label: 'Carpeta raíz', name: 'folder', value: C.driveRoot().join('/'), tip: 'Separá las subcarpetas con /' }) +
+        '<p class="muted mt-8" style="font-size:var(--fs-sm)">Adentro se ordenan solas por año, mes y sede. Ej.: ' + C.crumbs(['Mi unidad'].concat(C.driveRoot(), [String(u.today().getFullYear()), '11 - Noviembre', 'BT1'])) + '</p>',
+      foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-ok>' + ic('check') + 'Guardar</button>',
+      onMount: (el, close) => el.querySelector('[data-ok]').addEventListener('click', () => {
+        const v = el.querySelector('[name=folder]').value.split('/').map((x) => x.trim()).filter(Boolean).join('/'); if (!v) return;
+        BT.db.settings.driveFolder = v; BT.audit('Cambió carpeta de Drive', 'Configuración', { detail: v }); BT.save(); close();
+        ui.toast('Carpeta actualizada', { icon: 'folder-check', sub: v }); BT.refresh();
+      }),
+    });
+  };
+
+  C.drivePath = (inv) => { const [y, m] = inv.mes.split('-'); return ['Mi unidad'].concat(C.driveRoot(), [y, m + ' - ' + MESES_N[+m - 1], inv.sede]); };
+  C.crumbs = (parts) => '<span class="crumbs">' + parts.map((x, i) => (i ? ic('chevron-right', 'ic-xs') : '') + '<span>' + esc(x) + '</span>').join('') + '</span>';
+  C.fileName = (nro, rid, ext) => { const r = BT.resident(rid); return nro.replace(/\s+/g, '-') + ' · ' + (r ? r.apellido + ' ' + r.nombre : 'Residente') + '.' + (ext || 'pdf'); };
+  const fmtSize = (b) => (b > 1048576 ? u.fmtNum(b / 1048576, 1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+  const extOf = (n) => (String(n).split('.').pop() || 'pdf').toLowerCase();
+
+  /* Archivos adjuntos: se guardan en el navegador para la demo (en producción van directo a Google Drive) */
+  const FKEY = 'bt-files';
+  const mem = {};
+  const store = { get(id) { if (mem[id]) return mem[id]; try { const all = JSON.parse(localStorage.getItem(FKEY) || '{}'); return all[id] || null; } catch (e) { return null; } },
+    put(id, dataUrl) { mem[id] = dataUrl; try { const all = JSON.parse(localStorage.getItem(FKEY) || '{}'); all[id] = dataUrl; localStorage.setItem(FKEY, JSON.stringify(all)); return true; } catch (e) { return false; } } };
+  const readAsDataURL = (file) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(file); });
+  const toBlobUrl = async (dataUrl) => { try { const b = await (await fetch(dataUrl)).blob(); return URL.createObjectURL(b); } catch (e) { return dataUrl; } };
+
+  /** Vista previa de un archivo (PDF o imagen). Si es una factura de ejemplo sin archivo real, muestra el comprobante */
+  C.previewInto = async (box, { dataUrl, type, inv }) => {
+    if (!dataUrl) { box.innerHTML = '<div class="fprev-doc">' + C.cfeCard(inv) + '</div>'; return; }
+    if ((type || '').includes('pdf')) { const url = await toBlobUrl(dataUrl); box.innerHTML = '<iframe class="fprev-pdf" title="Vista previa de la factura" src="' + url + '#toolbar=0&navpanes=0&view=FitH"></iframe>'; return; }
+    box.innerHTML = '<div class="fprev-img"><img src="' + dataUrl + '" alt="Factura adjunta"></div>';
+  };
+
+  /** Genera una factura de ejemplo (imagen) para probar la demo sin tener un PDF a mano */
+  C.sampleInvoice = async function ({ nro, tipo, fecha, rid, mes, total }) {
+    const r = BT.resident(rid); const s = BT.db.sedes.find((x) => x.id === r.sede);
+    const W = 1240, H = 1754; const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+    const F = (w, z) => w + ' ' + z + 'px InterVar, "Segoe UI", sans-serif';
+    try { await document.fonts.load(F(700, 40)); } catch (e) { /* */ }
+    c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#1f2937'; c.font = F(800, 46); c.fillText(BT.db.meta.company, 90, 140);
+    c.font = F(500, 26); c.fillStyle = '#4b5563'; c.fillText('RUT ' + BT.db.meta.rut, 90, 186); c.fillText(s ? s.direccion + ', ' + s.barrio : '', 90, 224);
+    c.strokeStyle = '#111827'; c.lineWidth = 3; c.strokeRect(760, 90, 390, 170);
+    c.textAlign = 'center'; c.fillStyle = '#111827'; c.font = F(800, 34); c.fillText(tipo.toUpperCase(), 955, 148); c.font = F(700, 40); c.fillText(nro, 955, 205); c.font = F(500, 22); c.fillText('Fecha ' + u.fmtDate(fecha), 955, 240); c.textAlign = 'left';
+    c.fillStyle = '#f3f4f6'; c.fillRect(90, 310, 1060, 130); c.fillStyle = '#374151'; c.font = F(600, 24); c.fillText('RECEPTOR', 120, 352);
+    c.font = F(500, 28); c.fillStyle = '#111827'; c.fillText(r.referente.nombre + ' — por ' + BT.fullName(r), 120, 396); c.fillStyle = '#6b7280'; c.font = F(500, 22); c.fillText('Consumidor final · Período ' + u.fmtMonth(mes), 120, 428);
+    let y = 520; c.fillStyle = '#111827'; c.fillRect(90, y - 40, 1060, 56); c.fillStyle = '#fff'; c.font = F(700, 24); c.fillText('DESCRIPCIÓN', 120, y - 3); c.textAlign = 'right'; c.fillText('IMPORTE', 1120, y - 3); c.textAlign = 'left';
+    const lines = C.chargesOf(rid, mes); y += 60;
+    (lines.length ? lines : [{ concepto: 'Servicios del mes', monto: total }]).forEach((l) => { c.fillStyle = '#1f2937'; c.font = F(500, 26); c.fillText(l.concepto + (l.cantidad ? ' × ' + l.cantidad : ''), 120, y); c.textAlign = 'right'; c.fillText(u.fmtMoney(l.monto), 1120, y); c.textAlign = 'left'; c.fillStyle = '#e5e7eb'; c.fillRect(90, y + 22, 1060, 2); y += 64; });
+    const iva = BT.db.settings.iva; const neto = Math.round(total / (1 + iva));
+    y += 30; [['Neto gravado', neto], ['IVA tasa mínima ' + Math.round(iva * 100) + ' %', total - neto]].forEach(([k, v]) => { c.fillStyle = '#4b5563'; c.font = F(500, 26); c.fillText(k, 700, y); c.textAlign = 'right'; c.fillText(u.fmtMoney(v), 1120, y); c.textAlign = 'left'; y += 48; });
+    c.fillStyle = '#111827'; c.fillRect(690, y - 10, 460, 3); y += 44; c.font = F(800, 36); c.fillText('TOTAL', 700, y); c.textAlign = 'right'; c.fillText(u.fmtMoney(total), 1120, y); c.textAlign = 'left';
+    // QR simulado
+    const q = 220, qx = 90, qy = H - 360; let seed = 0; for (const ch of nro) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    c.fillStyle = '#111'; for (let i = 0; i < 25; i++) for (let j = 0; j < 25; j++) { seed = (seed * 1103515245 + 12345) >>> 0; const fin = (i < 7 && j < 7) || (i < 7 && j > 17) || (i > 17 && j < 7); if (fin ? (i % 6 === 0 || j % 6 === 0 || (i % 6 > 1 && i % 6 < 5 && j % 6 > 1 && j % 6 < 5)) : (seed >> 16) & 1) c.fillRect(qx + j * (q / 25), qy + i * (q / 25), q / 25, q / 25); }
+    c.fillStyle = '#4b5563'; c.font = F(500, 22); ['Código de seguridad ' + String(seed).slice(-6), 'CAE Nº 9024' + String(seed).slice(-7) + ' · Serie ' + nro.split(' ')[0], 'Puede verificar el comprobante en www.efactura.dgi.gub.uy', 'IVA al día'].forEach((t, i) => c.fillText(t, 350, qy + 50 + i * 40));
+    c.fillStyle = '#9ca3af'; c.font = F(500, 20); c.fillText('Comprobante de ejemplo generado para la demostración', 90, H - 70);
+    return cv.toDataURL('image/jpeg', 0.9);
+  };
+
+  /** Cargar una factura emitida en el sistema de facturación: número + archivo → Google Drive */
+  C.cargarFactura = function (rid, mes) {
+    mes = mes || C.curMes();
+    const pend = C.pendingInvoices(); const all = C.residents();
+    if (!rid) rid = (pend[0] || all[0] || {}).id;
+    const sug = () => { const n = Math.max(0, ...BT.db.invoices.map((i) => parseInt(String(i.nro).replace(/\D/g, ''), 10) || 0)); return 'A ' + String(n + 1).padStart(7, '0'); };
+    let file = null; // { name, size, type, dataUrl, sample }
+    const resOpts = pend.map((r) => ({ v: r.id, l: BT.fullName(r) + ' · ' + r.sede + ' · ' + u.fmtMoney(C.totalMes(r.id, mes)) + ' (sin factura)' })).concat(all.filter((r) => !pend.includes(r)).map((r) => ({ v: r.id, l: BT.fullName(r) + ' · ' + r.sede })));
+    ui.modal({
+      title: 'Cargar factura', icon: 'file-up', size: 'xl', sub: 'Emitiste la factura en tu sistema de facturación: cargá el número y el archivo, y se guarda sola en Google Drive',
+      body: '<div class="fx-grid"><div class="col gap-12"><div class="form-grid">' +
+        ui.field({ label: 'Residente', name: 'rid', type: 'select', value: rid, full: true, options: resOpts }) +
+        ui.field({ label: 'Tipo de comprobante', name: 'tipo', type: 'chips', value: 'e-Ticket', full: true, options: [{ v: 'e-Ticket', l: 'e-Ticket', icon: 'receipt' }, { v: 'e-Factura', l: 'e-Factura', icon: 'file-text' }] }) +
+        ui.field({ label: 'Número de factura', name: 'nro', required: true, placeholder: 'Ej.: ' + sug(), value: '', attrs: 'autocomplete="off" style="font-weight:650;letter-spacing:.02em"', tip: 'Serie y número, tal como figura en la factura' }) +
+        ui.field({ label: 'Fecha de emisión', name: 'fecha', type: 'date', value: u.todayIso(), required: true }) +
+        ui.field({ label: 'Importe total ($U)', name: 'total', type: 'number', value: C.totalMes(rid, mes), required: true, attrs: 'min="0" step="1"' }) +
+        ui.field({ label: 'Período', name: 'mes', type: 'month', value: mes }) + '</div>' +
+        '<div class="field"><label>Archivo de la factura<span class="req">*</span></label><label class="drop" id="fxDrop" tabindex="0"><input type="file" id="fxFile" accept="application/pdf,image/*" hidden>' + ic('upload-cloud') + '<span class="dt">Arrastrá el PDF o la foto de la factura</span><span class="dd">o hacé clic para elegirlo · PDF, JPG o PNG</span></label>' +
+        '<button type="button" class="btn ghost sm mt-8" data-sample>' + ic('wand-sparkles') + '¿No tenés una a mano? Usar factura de ejemplo</button></div>' +
+        '<div class="drive-dest">' + C.DRIVE_SVG + '<div class="grow"><div class="strong" style="font-size:var(--fs-sm)">Se guarda automáticamente en Google Drive</div><div class="muted" id="fxPath" style="font-size:var(--fs-xs)"></div></div></div></div>' +
+        '<div class="fprev" id="fxPrev"><div class="fprev-empty">' + ic('file-search') + '<b>Vista previa</b><span>Cuando adjuntes la factura la vas a ver acá</span></div></div></div>',
+      foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-save>' + C.DRIVE_SVG + 'Guardar en Drive</button>',
       onMount: (el, close) => {
-        el.querySelector('[data-go]').addEventListener('click', (ev) => {
-          ev.currentTarget.disabled = true; el.querySelector('[data-close]').disabled = true;
-          el.querySelector('.list').style.display = 'none';
-          const st = el.querySelector('#emSteps'); st.classList.remove('hidden'); const bar = el.querySelector('#emBar'); bar.classList.remove('hidden');
-          const items = st.querySelectorAll('.emit-step'); let k = 0;
-          const fast = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const $ = (q) => el.querySelector(q);
+        const cur = () => { const d = ui.formData(el.querySelector('.modal-b')); return { rid: d.rid, tipo: d.tipo || 'e-Ticket', nro: String(d.nro || '').trim().toUpperCase().replace(/\s+/g, ' '), fecha: d.fecha, total: +d.total || 0, mes: d.mes || mes }; };
+        const updPath = () => { const x = cur(); const r = BT.resident(x.rid); const inv = { mes: x.mes, sede: r.sede }; $('#fxPath').innerHTML = C.crumbs(C.drivePath(inv)) + '<div class="fname">' + ic('file', 'ic-xs') + esc(C.fileName(x.nro || 'A-0000000', x.rid, file ? extOf(file.name) : 'pdf')) + '</div>'; };
+        const showFile = async () => {
+          const x = cur(); const pv = $('#fxPrev');
+          pv.innerHTML = '<div class="fprev-bar">' + ic(file.type.includes('pdf') ? 'file-text' : 'image') + '<div class="grow ellipsis"><b>' + esc(file.name) + '</b><span>' + fmtSize(file.size) + (file.sample ? ' · ejemplo' : '') + '</span></div><button type="button" class="btn xs ghost" data-change>' + ic('refresh-cw') + 'Cambiar</button></div><div class="fprev-body"></div>';
+          await C.previewInto(pv.querySelector('.fprev-body'), { dataUrl: file.dataUrl, type: file.type, inv: x });
+          $('#fxDrop').classList.add('has'); $('#fxDrop .dt').textContent = file.name; $('#fxDrop .dd').textContent = 'Listo · ' + fmtSize(file.size) + ' · hacé clic para cambiarlo';
+          pv.querySelector('[data-change]').addEventListener('click', () => $('#fxFile').click()); updPath();
+        };
+        const take = async (f) => {
+          if (!f) return; const okType = /pdf$/i.test(f.type) || /^image\//.test(f.type) || /\.(pdf|jpe?g|png|webp)$/i.test(f.name);
+          if (!okType) return ui.toast('Formato no admitido', { type: 'warn', sub: 'Adjuntá un PDF o una imagen (JPG, PNG)' });
+          if (f.size > 15 * 1048576) return ui.toast('El archivo es muy grande', { type: 'warn', sub: 'Máximo 15 MB' });
+          file = { name: f.name, size: f.size, type: f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : 'image/jpeg'), dataUrl: await readAsDataURL(f) };
+          if (!$('[name=nro]').value) { const m = f.name.match(/([A-Z])[\s_-]?0*(\d{3,7})/i); if (m) $('[name=nro]').value = m[1].toUpperCase() + ' ' + m[2].padStart(7, '0'); }
+          showFile();
+        };
+        $('#fxFile').addEventListener('change', (e) => take(e.target.files[0]));
+        const dz = $('#fxDrop');
+        ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('over'); }));
+        ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('over'); }));
+        dz.addEventListener('drop', (e) => take(e.dataTransfer.files[0]));
+        dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#fxFile').click(); } });
+        $('[data-sample]').addEventListener('click', async () => {
+          if (!$('[name=nro]').value) $('[name=nro]').value = sug();
+          const x = cur(); const dataUrl = await C.sampleInvoice(x);
+          file = { name: C.fileName(x.nro, x.rid, 'jpg'), size: Math.round(dataUrl.length * 0.75), type: 'image/jpeg', dataUrl, sample: true }; showFile();
+        });
+        el.addEventListener('change', (e) => { if (e.target.name === 'rid') { $('[name=total]').value = C.totalMes(e.target.value, cur().mes); } updPath(); });
+        el.addEventListener('input', (e) => { if (e.target.name === 'nro') updPath(); });
+        updPath();
+        $('[data-save]').addEventListener('click', () => {
+          const b = el.querySelector('.modal-b'); if (!ui.validate(b)) return;
+          const x = cur();
+          if (!/^[A-Z]{1,2}\s?\d{1,8}$/.test(x.nro)) { ui.toast('Revisá el número de factura', { type: 'warn', sub: 'Serie y número, por ejemplo ' + sug() }); $('[name=nro]').focus(); return; }
+          if (BT.db.invoices.some((i) => i.nro.replace(/\s/g, '') === x.nro.replace(/\s/g, ''))) { ui.toast('Ese número ya está cargado', { type: 'warn', sub: 'La factura ' + x.nro + ' ya existe' }); $('[name=nro]').focus(); return; }
+          if (!file) { ui.toast('Falta adjuntar la factura', { type: 'warn', sub: 'Arrastrá el PDF o la foto' }); dz.classList.add('need'); setTimeout(() => dz.classList.remove('need'), 900); return; }
+          const r = BT.resident(x.rid); const nro = x.nro.replace(/^([A-Z]{1,2})\s?(\d+)$/, (m, s1, n) => s1 + ' ' + n.padStart(7, '0'));
+          const neto = Math.round(x.total / (1 + BT.db.settings.iva));
+          const inv = { id: u.uid('fe'), nro, serie: nro.split(' ')[0], tipo: x.tipo, residentId: r.id, sede: r.sede, mes: x.mes, neto, iva: x.total - neto, total: x.total, estado: 'En Drive', fecha: x.fecha, cargadaPor: BT.state.user.nombre, cargadaTs: Date.now() };
+          const ext = extOf(file.name);
+          inv.file = { name: C.fileName(nro, r.id, ext === 'jpeg' ? 'jpg' : ext), original: file.name, size: file.size, type: file.type, drive: C.drivePath(inv).join(' / '), driveId: 'gd_' + Math.random().toString(36).slice(2, 12), sample: !!file.sample };
+          // Pantalla de guardado
+          const steps = [[C.DRIVE_SVG, 'Conectando con Google Drive'], ['upload-cloud', 'Subiendo ' + inv.file.name], ['folder-check', 'Guardando en ' + C.drivePath(inv).slice(-3).join(' › ')], ['link-2', 'Vinculando la factura a la cuenta de ' + BT.shortName(r)]];
+          el.querySelector('.modal-f').innerHTML = '';
+          b.innerHTML = '<div class="up-wrap"><div class="up-file">' + ic(file.type.includes('pdf') ? 'file-text' : 'image') + '<div><b>' + esc(inv.file.name) + '</b><span>' + fmtSize(file.size) + '</span></div></div><div class="bar"><span id="upBar" style="width:0;animation:none;transition:width 420ms var(--ease-out)"></span></div><div class="emit-steps">' + steps.map(([i, t]) => '<div class="emit-step"><span class="es-ic">' + (i.startsWith('<svg') ? i : ic(i, 'ic-sm')) + '</span>' + esc(t) + '</div>').join('') + '</div></div>';
+          const items = b.querySelectorAll('.emit-step'); let k = 0; const fast = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion');
           const next = () => {
             if (k > 0) { items[k - 1].classList.remove('run'); items[k - 1].classList.add('done'); items[k - 1].querySelector('.es-ic').innerHTML = ic('check', 'ic-sm'); }
-            bar.firstElementChild.style.width = (k / items.length) * 100 + '%';
-            if (k === items.length) return finish();
-            items[k].classList.add('run'); items[k].querySelector('.es-ic').innerHTML = ''; k++;
-            setTimeout(next, fast ? 30 : 650 + Math.random() * 250);
+            b.querySelector('#upBar').style.width = (k / items.length) * 100 + '%';
+            if (k === items.length) return done();
+            items[k].classList.add('run'); k++; setTimeout(next, fast ? 40 : 520 + Math.random() * 200);
           };
-          const finish = () => {
-            const mes = C.curMes(); let n = Math.max(...BT.db.invoices.map((i) => parseInt(i.nro.replace(/\D/g, ''), 10) || 0));
-            const created = pend.map((r) => {
-              const tot = C.totalMes(r.id, mes); const neto = Math.round(tot / (1 + BT.db.settings.iva));
-              const inv = { id: u.uid('fe'), nro: 'A ' + String(++n).padStart(7, '0'), tipo: 'e-Ticket', residentId: r.id, sede: r.sede, mes, neto, iva: tot - neto, total: tot, estado: 'Aceptada DGI', fecha: u.todayIso(), cae: '9024' + String(1190000 + n).padStart(7, '0'), serie: 'A' };
-              BT.db.invoices.push(inv); return inv;
-            });
-            BT.audit('Emitió e-Facturas', 'Facturación electrónica', { detail: created.length + ' CFE · ' + created[0].nro + ' a ' + created[created.length - 1].nro });
+          const done = () => {
+            const persisted = store.put(inv.id, file.dataUrl); if (!persisted) inv.file.session = true;
+            BT.db.invoices.push(inv);
+            BT.audit('Cargó factura', 'Facturación', { residentId: r.id, sede: r.sede, detail: inv.tipo + ' ' + nro + ' · ' + u.fmtMoney(inv.total) + ' · Drive: ' + inv.file.drive });
             BT.save();
-            setTimeout(() => { close(); ui.toast(created.length + ' e-Facturas aceptadas por DGI', { sub: created[0].nro + ' a ' + created[created.length - 1].nro, icon: 'badge-check' }); BT.state.sub.cob = 'efactura'; BT.refresh(); BT.shell.updateNav(); }, fast ? 0 : 500);
+            b.innerHTML = '<div class="up-done"><span class="up-ok">' + BT.check + '</span><h3>Factura ' + esc(nro) + ' guardada en Google Drive</h3><p class="muted">' + esc(BT.fullName(r)) + ' · ' + u.fmtMoney(inv.total) + ' · ' + u.cap(u.fmtMonth(inv.mes)) + '</p><div class="drive-dest mt-16">' + C.DRIVE_SVG + '<div class="grow" style="text-align:left">' + C.crumbs(C.drivePath(inv)) + '<div class="fname">' + ic('file', 'ic-xs') + esc(inv.file.name) + '</div></div></div></div>';
+            el.querySelector('.modal-f').innerHTML = '<button class="btn ghost" data-close>Listo</button><button class="btn" data-ver>' + ic('eye') + 'Ver factura</button>' + (pend.filter((p) => p.id !== r.id).length ? '<button class="btn primary" data-otra>' + ic('plus') + 'Cargar otra</button>' : '');
+            el.querySelector('[data-close]').addEventListener('click', () => { close(); BT.refresh(); BT.shell.updateNav(); });
+            el.querySelector('[data-ver]').addEventListener('click', () => { close(); BT.refresh(); BT.shell.updateNav(); setTimeout(() => C.verFactura(inv.id), 260); });
+            const o = el.querySelector('[data-otra]'); if (o) o.addEventListener('click', () => { close(); BT.refresh(); BT.shell.updateNav(); setTimeout(() => C.cargarFactura(), 260); });
+            ui.toast('Factura ' + nro + ' en Drive', { icon: 'folder-check', sub: C.drivePath(inv).slice(-3).join(' › ') });
           };
           next();
         });
+      },
+    });
+  };
+
+  /** Ver una factura cargada: vista previa del archivo + datos de Drive */
+  C.verFactura = function (id) {
+    const inv = BT.db.invoices.find((i) => i.id === id); if (!inv) return;
+    const r = BT.resident(inv.residentId); const f = inv.file || {};
+    const dataUrl = store.get(inv.id);
+    ui.modal({
+      title: inv.tipo + ' ' + inv.nro, icon: 'receipt-text', size: 'xl', sub: BT.fullName(r) + ' · ' + u.cap(u.fmtMonth(inv.mes)),
+      body: '<div class="fx-grid rev"><div class="fprev" id="fvPrev"><div class="fprev-bar">' + ic((f.type || 'pdf').includes('pdf') ? 'file-text' : 'image') + '<div class="grow ellipsis"><b>' + esc(f.name || C.fileName(inv.nro, inv.residentId)) + '</b><span>' + (f.size ? fmtSize(f.size) : 'PDF') + '</span></div></div><div class="fprev-body"></div></div>' +
+        '<div class="col gap-12">' + ui.kv([['Número', '<b class="num">' + esc(inv.nro) + '</b>'], ['Tipo', esc(inv.tipo)], ['Fecha de emisión', u.fmtDate(inv.fecha)], ['Período', u.cap(u.fmtMonth(inv.mes))], ['Residente', esc(BT.fullName(r))], ['Referente', esc(r.referente.nombre)], ['Importe', '<b>' + u.fmtMoney(inv.total) + '</b>'], ['IVA incluido', u.fmtMoney(inv.iva)]]) +
+        '<div class="drive-dest">' + C.DRIVE_SVG + '<div class="grow"><div class="strong" style="font-size:var(--fs-sm)">Guardada en Google Drive ' + ui.badge('Sincronizada', 'ok', { icon: 'badge-check' }) + '</div>' + C.crumbs(C.drivePath(inv)) + '</div></div>' +
+        '<div class="muted" style="font-size:var(--fs-xs)">' + ic('user-round', 'ic-xs') + ' Cargada por ' + esc(inv.cargadaPor || 'Paula Benavídez') + ' el ' + u.fmtDate(inv.cargadaTs ? new Date(inv.cargadaTs) : inv.fecha) + (inv.cargadaTs ? ' a las ' + u.fmtTime(new Date(inv.cargadaTs)) : '') + (f.session ? ' · en la demo el archivo queda disponible mientras esta página siga abierta' : '') + '</div></div></div>',
+      foot: '<button class="btn ghost" data-close>Cerrar</button>' + (dataUrl ? '<button class="btn" data-dl>' + ic('download') + 'Descargar</button>' : '') + '<button class="btn" data-mail>' + ic('mail') + 'Enviar al referente</button><button class="btn primary" data-drive>' + C.DRIVE_SVG + 'Abrir en Drive</button>',
+      onMount: (el) => {
+        C.previewInto(el.querySelector('.fprev-body'), { dataUrl, type: f.type, inv });
+        const dl = el.querySelector('[data-dl]'); if (dl) dl.addEventListener('click', async () => { const b = await (await fetch(dataUrl)).blob(); BT.download(b, f.name); });
+        el.querySelector('[data-mail]').addEventListener('click', () => { BT.audit('Envió factura', 'Facturación', { residentId: r.id, detail: inv.nro + ' a ' + r.referente.nombre }); ui.toast('Factura enviada a ' + r.referente.nombre, { icon: 'mail', sub: 'Con el archivo adjunto · simulado en la demo' }); });
+        el.querySelector('[data-drive]').addEventListener('click', () => ui.toast('Abriendo la carpeta en Google Drive', { icon: 'folder-open', sub: C.drivePath(inv).slice(-3).join(' › ') + ' · simulado en la demo' }));
       },
     });
   };
@@ -323,7 +524,7 @@
       out.push({ id: 'cob-venc', tone: m.some((x) => x.a.mesesAdeudados >= 2) ? 'danger' : 'warn', icon: 'receipt', title: m.length + (m.length === 1 ? ' cuenta con cuotas vencidas' : ' cuentas con cuotas vencidas'), desc: u.fmtMoney(tot) + ' de deuda vencida · ' + m.slice(0, 2).map((x) => BT.shortName(x.r)).join(', ') + (m.length > 2 ? '…' : ''), tab: 'cobranzas', params: { sub: 'morosidad' }, action: () => { BT.state.sub.cob = 'morosidad'; BT.go('cobranzas', { sub: 'morosidad' }); } });
     }
     const p = C.pendingInvoices();
-    if (p.length) out.push({ id: 'cob-cfe', tone: 'info', icon: 'file-clock', title: p.length + ' e-Facturas del mes por emitir', desc: 'Período ' + u.fmtMonth(C.curMes()) + ' · ' + u.fmtMoney(u.sum(p, (r) => C.totalMes(r.id, C.curMes()))), tab: 'cobranzas', params: { sub: 'efactura' }, action: () => { BT.state.sub.cob = 'efactura'; BT.go('cobranzas', { sub: 'efactura' }); } });
+    if (p.length) out.push({ id: 'cob-cfe', tone: 'info', icon: 'file-clock', title: p.length + (p.length === 1 ? ' factura del mes sin cargar' : ' facturas del mes sin cargar'), desc: 'Período ' + u.fmtMonth(C.curMes()) + ' · ' + u.fmtMoney(u.sum(p, (r) => C.totalMes(r.id, C.curMes()))), tab: 'cobranzas', params: { sub: 'efactura' }, action: () => { BT.state.sub.cob = 'efactura'; BT.go('cobranzas', { sub: 'efactura' }); } });
     return out;
   });
 
@@ -348,7 +549,7 @@
         eyebrow: 'Cobranzas · ' + BT.sedeName(), icon: 'receipt', title: 'Cobranzas y facturación',
         sub: 'Cuotas de ' + u.fmtMonth(mes) + ' · vencimiento el ' + u.fmtDate(C.dueDate(mes)) + ' (' + u.relDay(C.dueDate(mes)) + ')',
         actions: ui.exportMenu([{ id: 'xlsx', label: 'Cuotas y morosidad', sub: 'Excel · 2 hojas', icon: 'file-spreadsheet' }]) +
-          (BT.can('money.write') ? '<button class="btn" data-act="emit">' + ic('send') + 'Emitir e-Facturas' + (pendCfe.length ? ' <span class="badge info" style="height:18px;padding:0 6px">' + pendCfe.length + '</span>' : '') + '</button><button class="btn primary" data-act="pay">' + ic('banknote') + 'Registrar pago</button>' : ''),
+          (BT.can('money.write') ? '<button class="btn" data-act="fx">' + ic('file-up') + 'Cargar factura' + (pendCfe.length ? ' <span class="badge info" style="height:18px;padding:0 6px">' + pendCfe.length + '</span>' : '') + '</button><button class="btn primary" data-act="pay">' + ic('banknote') + 'Registrar pago</button>' : ''),
       }) +
         '<div class="grid g-4 stagger">' +
         ui.kpi({ label: 'Facturado en ' + u.fmtMonth(mes).split(' ')[0], value: facturado, money: true, icon: 'file-text', foot: res.length + ' residentes · cuotas y extras' }) +
@@ -360,13 +561,13 @@
         { id: 'cuotas', label: 'Cuotas del mes', icon: 'calendar-check' },
         { id: 'morosidad', label: 'Morosidad', icon: 'circle-alert', count: mor.length || '' },
         { id: 'pagos', label: 'Pagos y recibos', icon: 'banknote' },
-        { id: 'efactura', label: 'e-Factura', icon: 'receipt-text', count: pendCfe.length || '' },
+        { id: 'efactura', label: 'Facturas', icon: 'receipt-text', count: pendCfe.length || '' },
         { id: 'garantias', label: 'Depósitos de garantía', icon: 'shield-check' },
       ], (p, id) => PANELS[id](p, { mes, res, mor, pendCfe }));
       ui.on(el, {
-        pay: (t) => C.registrarPago(t.dataset.id), emit: () => C.emitir(), export: () => C.xlsxCuotas(),
+        pay: (t) => C.registrarPago(t.dataset.id), fx: (t) => C.cargarFactura(t.dataset.id), drivecfg: () => C.driveConfig(), export: () => C.xlsxCuotas(),
         acc: (t) => C.openAccount(t.dataset.id), wa: (t) => C.recordatorio(t.dataset.id), pdf: (t) => C.estadoCuentaPDF(t.dataset.id), rec: (t) => C.reciboPDF(t.dataset.id),
-        cfe: (t) => { const inv = BT.db.invoices.find((i) => i.id === t.dataset.id); ui.modal({ title: inv.tipo + ' ' + inv.nro, sub: BT.fullName(BT.resident(inv.residentId)) + ' · ' + u.fmtMonth(inv.mes), icon: 'receipt-text', body: C.cfeCard(inv), foot: '<button class="btn ghost" data-close>Cerrar</button><button class="btn" data-close onclick="BT.ui.toast(\'CFE reenviado al referente\',{icon:\'mail\'})">' + ic('mail') + 'Reenviar por correo</button>' }); },
+        cfe: (t) => C.verFactura(t.dataset.id),
       });
     },
   });
@@ -426,21 +627,34 @@
     },
     efactura(p, { mes, pendCfe }) {
       const ids = new Set(C.residents().map((r) => r.id));
-      const invs = BT.db.invoices.filter((i) => i.mes === mes && ids.has(i.residentId)).sort((a, b) => b.nro.localeCompare(a.nro));
-      const tot = u.sum(invs, 'total'), iva = u.sum(invs, 'iva');
-      p.innerHTML = (pendCfe.length ? '<div class="alert info mb-16">' + ic('file-clock') + '<div class="grow"><b>' + pendCfe.length + ' residentes sin e-Factura de ' + u.fmtMonth(mes) + '.</b> ' + pendCfe.slice(0, 4).map((r) => esc(BT.shortName(r))).join(', ') + (pendCfe.length > 4 ? '…' : '') + '</div>' + (BT.can('money.write') ? '<button class="btn sm primary" data-act="emit">' + ic('send') + 'Emitir ahora</button>' : '') + '</div>' : '<div class="alert ok mb-16">' + ic('badge-check') + '<div><b>Período facturado completo.</b> Todos los comprobantes de ' + u.fmtMonth(mes) + ' fueron aceptados por DGI.</div></div>') +
-        '<div class="grid g-3 stagger">' +
-        ui.kpi({ label: 'Comprobantes emitidos', value: invs.length, icon: 'receipt-text', foot: 'e-Ticket · consumidor final' }) +
-        ui.kpi({ label: 'Total facturado', value: tot, money: true, icon: 'file-text', foot: 'Neto ' + u.fmtMoney(tot - iva) }) +
-        ui.kpi({ label: 'IVA tasa mínima (' + Math.round(BT.db.settings.iva * 100) + ' %)', value: iva, money: true, icon: 'landmark', tone: 'info', foot: 'Débito fiscal del período' }) + '</div>' +
-        ui.card({ cls: 'mt-16', title: 'Comprobantes fiscales electrónicos', icon: 'receipt-text', sub: u.cap(u.fmtMonth(mes)) + ' · hacé clic para ver el CFE', bodyCls: 'flush', body: ui.table([
+      const invs = BT.db.invoices.filter((i) => i.mes === mes && ids.has(i.residentId)).sort((a, b) => (b.cargadaTs || 0) - (a.cargadaTs || 0) || b.nro.localeCompare(a.nro));
+      const tot = u.sum(invs, 'total');
+      const w = BT.can('money.write');
+      const sedeEj = BT.state.sede === 'ALL' ? 'BT1' : BT.state.sede;
+      p.innerHTML =
+        '<div class="card drive-card"><div class="drive-card-in">' + C.DRIVE_SVG.replace('class="gdrive"', 'class="gdrive lg"') + '<div class="grow"><div class="row gap-8 wrap"><b style="font-size:var(--fs-lg)">Google Drive conectado</b>' + ui.badge('Guardado automático', 'ok', { icon: 'refresh-cw' }) + '</div><div class="muted mt-4" style="font-size:var(--fs-sm)">Cada factura que cargues se guarda en ' + C.crumbs(C.drivePath({ mes, sede: sedeEj }).slice(0, -1).concat(BT.state.sede === 'ALL' ? ['BT1 o BT2'] : [sedeEj])) + '</div></div>' +
+        '<button class="btn sm ghost" data-act="drivecfg">' + ic('folder-cog') + 'Cambiar carpeta</button></div>' +
+        '<div class="fx-steps"><div><span>1</span><b>Cobrás acá</b><small>Cuotas, extras y pagos de cada residente</small></div><div><span>2</span><b>Facturás en tu sistema</b><small>Emitís el e-Ticket o la e-Factura como siempre</small></div><div><span>3</span><b>Volvés y la cargás</b><small>Número + PDF o foto → queda en Drive y en la cuenta</small></div></div></div>' +
+        '<div class="grid g-3 stagger mt-16">' +
+        ui.kpi({ label: 'Facturas cargadas', value: invs.length, icon: 'folder-check', foot: 'Guardadas en Google Drive' }) +
+        ui.kpi({ label: 'Pendientes de cargar', value: pendCfe.length, icon: 'file-clock', tone: pendCfe.length ? 'warn' : 'ink', foot: pendCfe.length ? u.fmtMoney(u.sum(pendCfe, (r) => C.totalMes(r.id, mes))) + ' por facturar' : 'Período completo' }) +
+        ui.kpi({ label: 'Total facturado', value: tot, money: true, icon: 'file-text', tone: 'info', foot: u.cap(u.fmtMonth(mes)) + ' · IVA incluido' }) + '</div>' +
+        (pendCfe.length ? ui.card({ cls: 'mt-16', title: 'Falta cargar la factura', icon: 'file-clock', sub: 'Residentes con cuota de ' + u.fmtMonth(mes) + ' y sin factura cargada', actions: w ? '<button class="btn sm primary" data-act="fx">' + ic('file-up') + 'Cargar factura</button>' : '', bodyCls: 'flush', body: ui.table([
+          { label: 'Residente', render: (r) => ui.person(BT.fullName(r), BT.sedeTag(r.sede) + ' Hab. ' + r.habitacion + r.cama + ' · ' + esc(r.referente.nombre)) },
+          { label: 'Importe a facturar', align: 'num', render: (r) => '<b>' + u.fmtMoney(C.totalMes(r.id, mes)) + '</b>' },
+          { label: 'Cobro', render: (r) => { const st = C.statusMes(r.id, mes); return ui.badge(st.label, st.tone, { icon: st.icon }); } },
+          { label: '', align: 'num', render: (r) => (w ? '<button class="btn xs soft" data-act="fx" data-id="' + r.id + '">' + ic('file-up') + 'Cargar factura</button>' : '') },
+        ], pendCfe, { compact: true }) }) : '<div class="alert ok mt-16">' + ic('badge-check') + '<div><b>Período completo.</b> Todas las facturas de ' + u.fmtMonth(mes) + ' están cargadas y guardadas en Drive.</div></div>') +
+        ui.card({ cls: 'mt-16', title: 'Facturas de ' + u.fmtMonth(mes), icon: 'receipt-text', sub: 'Hacé clic para ver la factura adjunta', bodyCls: 'flush', body: ui.table([
           { label: 'Número', render: (i) => '<b class="num">' + esc(i.nro) + '</b>' },
           { label: 'Tipo', render: (i) => ui.badge(i.tipo, 'outline') },
           { label: 'Residente', render: (i) => { const r = BT.resident(i.residentId); return esc(BT.fullName(r)) + ' <span class="subtle">· ' + r.sede + '</span>'; } },
-          { label: 'Neto', align: 'num', render: (i) => u.fmtMoney(i.neto) }, { label: 'IVA', align: 'num', render: (i) => u.fmtMoney(i.iva) }, { label: 'Total', align: 'num', render: (i) => '<b>' + u.fmtMoney(i.total) + '</b>' },
-          { label: 'Estado DGI', render: (i) => ui.badge(i.estado, 'ok', { icon: 'badge-check' }) },
+          { label: 'Emisión', render: (i) => '<span class="num">' + u.fmtDate(i.fecha) + '</span>' },
+          { label: 'Total', align: 'num', render: (i) => '<b>' + u.fmtMoney(i.total) + '</b>' },
+          { label: 'Archivo', render: (i) => '<span class="fchip">' + ic(i.file && (i.file.type || '').startsWith('image') ? 'image' : 'file-text', 'ic-xs') + '<span class="ellipsis">' + esc(i.file ? i.file.name : C.fileName(i.nro, i.residentId)) + '</span></span>' },
+          { label: 'Drive', render: () => '<span class="drive-ok">' + C.DRIVE_SVG + 'Guardada</span>' },
           { label: '', align: 'num', render: (i) => '<button class="btn xs ghost" data-act="cfe" data-id="' + i.id + '">' + ic('eye') + 'Ver</button>' },
-        ], invs, { compact: true, rowAttrs: (i) => 'class="click" data-act="cfe" data-id="' + i.id + '"', empty: { ill: 'default', title: 'Sin comprobantes', text: 'Todavía no se emitieron e-Facturas este mes.' } }) });
+        ], invs, { compact: true, rowAttrs: (i) => 'class="click" data-act="cfe" data-id="' + i.id + '"', empty: { ill: 'default', title: 'Todavía no hay facturas cargadas', text: 'Cuando emitas una factura en tu sistema, cargala acá.' } }) });
     },
     garantias(p, { res }) {
       const all = BT.bySede(BT.db.residents).map((r) => ({ r, ch: BT.db.charges.find((c) => c.residentId === r.id && c.garantia), pg: BT.db.payments.find((x) => x.residentId === r.id && x.garantia) })).filter((x) => x.ch);

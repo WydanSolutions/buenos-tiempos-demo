@@ -19,7 +19,7 @@
       '<span class="leaf" style="width:180px;height:180px;right:8%;top:12%;--r:18deg"></span><span class="leaf" style="width:90px;height:90px;left:6%;bottom:26%;--r:-30deg;animation-delay:-3s"></span><span class="leaf" style="width:120px;height:120px;right:30%;bottom:6%;--r:60deg;animation-delay:-6s"></span>' +
       '<div><span class="logo-plaque"><img class="logo-big" src="' + BT.LOGO + '" alt="Residencial Buenos Tiempos"></span></div>' +
       '<div><h2>Toda la gestión del residencial, con la calidez de siempre.</h2><p>Residentes, salud, personal, cobranzas y cumplimiento normativo de BT1 y BT2 en un solo lugar.</p>' +
-      '<div class="feats"><span>' + ic('shield-check', 'ic-sm') + 'Ley 18.331</span><span>' + ic('file-check-2', 'ic-sm') + 'Decreto 356/016</span><span>' + ic('users', 'ic-sm') + 'Ratio Ord. 1032/2019</span><span>' + ic('receipt', 'ic-sm') + 'e-Factura</span></div></div></div>' +
+      '<div class="feats"><span>' + ic('shield-check', 'ic-sm') + 'Ley 18.331</span><span>' + ic('file-check-2', 'ic-sm') + 'Decreto 356/016</span><span>' + ic('users', 'ic-sm') + 'Ratio Ord. 1032/2019</span><span>' + ic('folder-check', 'ic-sm') + 'Facturas en Google Drive</span></div></div></div>' +
       '<div class="login-panel"><div class="login-box" id="loginBox"></div></div></div>';
     shell.loginRoles();
   };
@@ -28,7 +28,7 @@
     box.innerHTML = '<div class="eyebrow" style="display:inline-flex;gap:6px;align-items:center;font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-600)">' + ic('sparkles', 'ic-xs') + 'Demo interactiva</div>' +
       '<h1 class="mt-8">Hola, ¿con qué perfil ingresás?</h1><p class="muted mt-8">Cada rol ve solo lo que le corresponde. Elegí uno para recorrer el sistema.</p>' +
       '<div class="role-grid stagger">' + Object.entries(BT.ROLES).map(([k, r]) => '<button class="role-card" data-role="' + k + '"><span class="rc-ic">' + ic(r.icon) + '</span><span><span class="t">' + r.label + '</span><br><span class="d">' + r.desc + '</span></span></button>').join('') + '</div>' +
-      '<div class="row between mt-24"><span class="subtle" style="font-size:var(--fs-xs)">Desarrollado por <b style="color:var(--ink-600)">Wydan Solutions</b></span><button class="btn ghost sm" data-reset>' + ic('rotate-ccw') + 'Restablecer demo</button></div>';
+      '<div class="row between mt-24"><a class="wy-credit" href="#" onclick="return false" title="Wydan Solutions"><span>Desarrollado por</span><img src="' + BT.WYDAN + '" alt="Wydan Solutions"></a><button class="btn ghost sm" data-reset>' + ic('rotate-ccw') + 'Restablecer demo</button></div>';
     box.querySelectorAll('[data-role]').forEach((b) => b.addEventListener('click', () => shell.loginUsers(b.dataset.role)));
     box.querySelector('[data-reset]').addEventListener('click', () => BT.resetDemo());
   };
@@ -143,7 +143,7 @@
       '<aside class="sidebar" aria-label="Navegación">' +
       '<div class="sb-brand"><img src="' + BT.LOGO + '" alt=""><div><div class="t1">Buenos Tiempos</div><div class="t2">Residencial · ' + esc(BT.db.meta.company) + '</div></div></div>' +
       '<nav class="sb-nav" id="sbNav"></nav>' +
-      '<div class="sb-foot"><div class="row between"><button class="btn ghost sm" data-reset style="padding:0 8px">' + ic('rotate-ccw') + 'Restablecer demo</button><button class="icon-btn ghost sm" data-logout data-tip="Cambiar de usuario">' + ic('log-out', 'ic-sm') + '</button></div><div class="wydan">' + ic('leaf', 'ic-xs') + 'Desarrollado por <b>Wydan Solutions</b></div></div>' +
+      '<div class="sb-foot"><div class="row between"><button class="btn ghost sm" data-reset style="padding:0 8px">' + ic('rotate-ccw') + 'Restablecer demo</button><button class="icon-btn ghost sm" data-logout data-tip="Cambiar de usuario">' + ic('log-out', 'ic-sm') + '</button></div><div class="wydan"><span>Desarrollado por</span><span class="wy-plate"><img src="' + BT.WYDAN + '" alt="Wydan Solutions"></span></div></div>' +
       '</aside>' +
       '<div class="main"><header class="topbar" id="topbar">' +
       '<button class="icon-btn ghost menu-btn" data-menu aria-label="Menú">' + ic('menu') + '</button>' +
@@ -155,7 +155,7 @@
       '<button class="user-chip" data-logout-menu>' + ui.avatar(usr.nombre, { size: 'sm' }) + '<span class="txt" style="text-align:left"><span class="n">' + esc(usr.nombre) + '</span><br><span class="r">' + R.label + '</span></span></button>' +
       '</header>' +
       '<main class="content" id="content"></main>' +
-      '<footer class="app-foot"><span>Residencial Buenos Tiempos · ' + esc(BT.db.meta.company) + ' · Datos ficticios de demostración</span><span>Desarrollado por <b>Wydan Solutions</b></span></footer></div>';
+      '<footer class="app-foot"><span>Residencial Buenos Tiempos · ' + esc(BT.db.meta.company) + ' · Datos ficticios de demostración</span><span class="wy-credit"><span>Desarrollado por</span><img src="' + BT.WYDAN + '" alt="Wydan Solutions"></span></footer></div>';
 
     const root = app();
     root.querySelector('[data-reset]').addEventListener('click', () => BT.resetDemo());

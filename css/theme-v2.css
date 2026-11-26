@@ -266,3 +266,11 @@ body { background: var(--bg); }
   .page-head h1 { font-size: 26px; }
   .tabs { width: 100%; }
 }
+
+/* ---------- Firma de Wydan Solutions ---------- */
+.wy-credit { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-xs); color: var(--ink-500); text-decoration: none; }
+.wy-credit img { height: 34px; width: auto; display: block; }
+.app-foot .wy-credit img { height: 24px; }
+.sb-foot .wydan { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 10.5px; letter-spacing: .02em; }
+.sb-foot .wy-plate { display: inline-flex; align-items: center; background: #fff; border-radius: 9px; padding: 4px 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, .18); }
+.sb-foot .wy-plate img { height: 22px; width: auto; display: block; }
