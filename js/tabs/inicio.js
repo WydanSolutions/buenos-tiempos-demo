@@ -7,22 +7,22 @@
 
   BT.addCSS('inicio', `
     .hero2{position:relative;overflow:hidden;border-radius:26px;padding:26px 28px;margin:16px 0;color:#fff;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;
-      background:radial-gradient(560px 260px at 92% -10%,rgba(143,208,162,.5),transparent 60%),radial-gradient(420px 260px at -5% 120%,rgba(143,208,162,.18),transparent 60%),linear-gradient(135deg,#23643a 0%,#174a2a 50%,#0f2f1b 100%);
-      box-shadow:0 26px 50px -24px rgba(15,47,27,.75)}
+      background:radial-gradient(560px 260px at 92% -10%,color-mix(in srgb, var(--brand-300) 50%, transparent),transparent 60%),radial-gradient(420px 260px at -5% 120%,color-mix(in srgb, var(--brand-300) 18%, transparent),transparent 60%),linear-gradient(135deg,var(--brand-700) 0%,var(--brand-800) 50%,var(--brand-950) 100%);
+      box-shadow:0 26px 50px -24px color-mix(in srgb, var(--brand-950) 75%, transparent)}
     .hero2::after{content:"";position:absolute;right:220px;bottom:-70px;width:200px;height:200px;border-radius:0 70% 0 70%;background:rgba(255,255,255,.05);transform:rotate(-12deg);pointer-events:none}
-    .hero2 .live{color:#b8e6c6}.hero2 .live::before{background:#8fd0a2}
+    .hero2 .live{color:var(--brand-200)}.hero2 .live::before{background:var(--brand-300)}
     .hero2 .hi{font-size:34px;font-weight:800;letter-spacing:-.04em;line-height:1.08;margin-top:8px}
-    .hero2 .sum{color:#cfe8d6;font-size:15px;margin-top:8px;max-width:620px;line-height:1.5}
+    .hero2 .sum{color:var(--brand-200);font-size:15px;margin-top:8px;max-width:620px;line-height:1.5}
     .hero2 .sum b{color:#fff;font-weight:650}
     .hero2 .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-    .hero2 .pills span{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:#eaf6ee;backdrop-filter:blur(6px)}
+    .hero2 .pills span{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:var(--brand-50);backdrop-filter:blur(6px)}
     .hero2 .pills .ic{width:15px;height:15px}
     .hero2 .rings{display:flex;gap:18px;position:relative;z-index:1}
     .hero2 .ring{width:108px;height:108px}
     .hero2 .ring .track{stroke:rgba(255,255,255,.14)}
-    .hero2 .ring .lbl b{color:#fff;font-size:22px}.hero2 .ring .lbl span{color:#bfe0c9}
-    .hero2 .rcap{text-align:center;font-size:12px;font-weight:700;color:#e3f2e7;margin-top:6px;letter-spacing:.02em}
-    .hero2 .rcap small{display:block;font-weight:500;color:#a9cdb3}
+    .hero2 .ring .lbl b{color:#fff;font-size:22px}.hero2 .ring .lbl span{color:var(--brand-200)}
+    .hero2 .rcap{text-align:center;font-size:12px;font-weight:700;color:var(--brand-100);margin-top:6px;letter-spacing:.02em}
+    .hero2 .rcap small{display:block;font-weight:500;color:color-mix(in srgb, var(--brand-300) 60%, rgb(187,187,187))}
 
     .bento{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(138px,auto);gap:14px}
     .tile{position:relative;overflow:hidden;border-radius:24px;padding:18px 20px;display:flex;flex-direction:column;gap:6px;transition:transform var(--d) var(--ease),box-shadow var(--d) var(--ease);text-align:left;border:0;font:inherit;color:inherit}
@@ -36,17 +36,17 @@
     .tile .chip2{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:12px;font-weight:700;background:rgba(255,255,255,.6);border-radius:99px;padding:4px 10px}
     .tile .go{position:absolute;right:14px;top:14px;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.5);opacity:0;transform:translate(-4px,4px);transition:all var(--d) var(--ease)}
     button.tile:hover .go{opacity:1;transform:none}
-    .t-big{grid-column:span 2;grid-row:span 2;color:#fff;background:radial-gradient(320px 200px at 100% 0%,rgba(143,208,162,.35),transparent 65%),linear-gradient(150deg,#2a7445,#174a2a);box-shadow:0 18px 36px -18px rgba(18,58,34,.7)}
-    .t-big .tv{font-size:72px}.t-big .chip2{background:rgba(255,255,255,.14);color:#eaf6ee}.t-big .go{background:rgba(255,255,255,.16);color:#fff}
+    .t-big{grid-column:span 2;grid-row:span 2;color:#fff;background:radial-gradient(320px 200px at 100% 0%,color-mix(in srgb, var(--brand-300) 35%, transparent),transparent 65%),linear-gradient(150deg,var(--brand-600),var(--brand-800));box-shadow:0 18px 36px -18px color-mix(in srgb, var(--brand-900) 70%, transparent)}
+    .t-big .tv{font-size:72px}.t-big .chip2{background:rgba(255,255,255,.14);color:var(--brand-50)}.t-big .go{background:rgba(255,255,255,.16);color:#fff}
     .bedmap{display:flex;flex-direction:column;gap:10px;margin-top:auto}
     .bedmap .bm-row{display:flex;align-items:center;gap:10px}
-    .bedmap .bm-s{font-size:11px;font-weight:800;letter-spacing:.04em;color:#cfe8d6;width:28px}
+    .bedmap .bm-s{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--brand-200);width:28px}
     .bedmap .bm{display:grid;grid-template-columns:repeat(18,minmax(0,1fr));gap:4px;flex:1}
     .bedmap .bm i{height:20px;border-radius:6px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px -2px rgba(0,0,0,.25);animation:pop 420ms var(--ease-spring) both}
     .bedmap .bm i.f{background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
     .bedmap .bm i.r{background:#f4c46a}
-    .bedmap .bm i.d{background:#c9ecd3}
-    .bm-leg{display:flex;gap:12px;font-size:11px;color:#cfe8d6;font-weight:600}
+    .bedmap .bm i.d{background:color-mix(in srgb, var(--brand-300) 55%, #fff)}
+    .bm-leg{display:flex;gap:12px;font-size:11px;color:var(--brand-200);font-weight:600}
     .bm-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
     .t-red{background:var(--tile-red);color:var(--tile-red-ink)}
     .t-mint{background:var(--tile-mint);color:var(--tile-mint-ink)}
@@ -65,7 +65,7 @@
     .al2 .ar{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;transition:background var(--d-fast),transform var(--d-fast)}
     .al2 .ar:hover{background:#f4f6f2}
     .al2 .ar .st{width:4px;align-self:stretch;border-radius:4px;flex:none}
-    .al2 .ar .st.danger{background:#d0574b}.al2 .ar .st.warn{background:#e0a83e}.al2 .ar .st.info{background:#5d8fcb}.al2 .ar .st.ok{background:#3f9a5d}
+    .al2 .ar .st.danger{background:#d0574b}.al2 .ar .st.warn{background:#e0a83e}.al2 .ar .st.info{background:#5d8fcb}.al2 .ar .st.ok{background:var(--brand-400)}
     .al2 .ar .t{font-weight:650;font-size:14px;color:var(--ink-950);line-height:1.3}
     .al2 .ar .d{font-size:12.5px;color:var(--ink-500);line-height:1.35;margin-top:1px}
     .al2 .ar .act{margin-left:auto;flex:none;font-size:12px;font-weight:700;border-radius:9px;padding:6px 11px;background:var(--brand-50);color:var(--brand-700);transition:background var(--d-fast)}
@@ -74,7 +74,7 @@
 
     .shift-now{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .sn{border-radius:14px;padding:10px 12px;background:#f4f6f2;transition:background var(--d)}
-    .sn.cur{background:var(--tile-mint);box-shadow:inset 0 0 0 1.5px #b9dfc4}
+    .sn.cur{background:var(--tile-mint);box-shadow:inset 0 0 0 1.5px var(--brand-200)}
     .sn.bad{background:var(--tile-red);box-shadow:inset 0 0 0 1.5px #f2c2bc}
     .sn .h{display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-xs);font-weight:650;color:var(--ink-600)}
     .sn .h .ic{width:14px;height:14px}
@@ -191,7 +191,7 @@
         '<div class="bento stagger">' +
         '<button class="tile t-big" data-act="go" data-tab="' + (canSee('admisiones') ? 'admisiones' : canSee('residentes') ? 'residentes' : 'inicio') + '"><span class="go">' + ic('arrow-up-right', 'ic-sm') + '</span><div class="tl">' + ic('bed-double') + 'Camas ocupadas</div><div class="tv"><span data-count="' + tot.ocupadas + '">' + tot.ocupadas + '</span><small>/' + tot.camas + '</small></div>' +
         '<span class="chip2">' + ic('users', 'ic-xs') + res.filter(BT.isDependent).length + ' dependientes · Barthel ≤ 40</span>' +
-        '<div class="bedmap">' + sedes.map(bedRow).join('') + '<div class="bm-leg"><span><i style="background:#fff"></i>Ocupada</span><span><i style="background:#c9ecd3"></i>Dependiente</span><span><i style="background:#f4c46a"></i>Reservada</span><span><i style="background:rgba(255,255,255,.2)"></i>Libre</span></div></div></button>' +
+        '<div class="bedmap">' + sedes.map(bedRow).join('') + '<div class="bm-leg"><span><i style="background:#fff"></i>Ocupada</span><span><i style="background:color-mix(in srgb, var(--brand-300) 55%, #fff)"></i>Dependiente</span><span><i style="background:#f4c46a"></i>Reservada</span><span><i style="background:rgba(255,255,255,.2)"></i>Libre</span></div></div></button>' +
         ratioTile +
         '<button class="tile t-yellow" data-act="go" data-tab="' + (canSee('medicacion') ? 'medicacion' : 'inicio') + '"><span class="go">' + ic('arrow-up-right', 'ic-sm') + '</span><div class="tl">' + ic('pill') + 'Medicación del turno</div><div class="tv"><span data-count="' + medPct + '">' + medPct + '</span><small>%</small></div><div class="ts">' + given + ' de ' + doses.length + ' dosis' + (late ? ' · <b>' + plural(late, 'atrasada', 'atrasadas') + '</b>' : '') + '</div><div class="pbar"><span style="width:' + medPct + '%"></span></div></button>' +
         '<button class="tile t-violet" data-act="go" data-tab="' + (canSee('personal') ? 'personal' : 'inicio') + '"><span class="go">' + ic('arrow-up-right', 'ic-sm') + '</span><div class="tl">' + ic('users-round') + 'Equipo en turno</div><div class="tv">' + team.length + '<small> personas</small></div><div class="av-stack" style="margin-top:auto">' + team.slice(0, 6).map((p) => ui.avatar(p.nombre, { size: 'sm', tip: true })).join('') + (team.length > 6 ? '<span class="avatar sm" style="--av-bg:#fff;--av-fg:#3d2f73">+' + (team.length - 6) + '</span>' : '') + '</div></button>' +

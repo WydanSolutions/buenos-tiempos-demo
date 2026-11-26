@@ -336,6 +336,63 @@
     cat: ['#297040', '#8fc49f', '#393939', '#c9a26b', '#6b5ba8', '#5d8fcb', '#d98c5f', '#a8a39a', '#3f9d8f', '#b5677a'],
   };
   BT.alpha = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+  /* ------------------------------------------------------------------
+     Paletas de color de la interfaz (Configuración → Apariencia)
+     Cada paleta genera la escala --brand-50 … --brand-950 manteniendo
+     las mismas luminosidades del verde original (mismo contraste).
+     ------------------------------------------------------------------ */
+  const BASE_SCALE = { 950: '#0f2a18', 900: '#163d23', 800: '#1c4f2d', 700: '#226037', 600: '#297040', 500: '#378650', 400: '#5aa271', 300: '#8fc49f', 200: '#c2dfca', 100: '#e2f0e6', 50: '#f1f8f3' };
+  const hex2rgb = (h) => [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16));
+  const rgb2hsl = ([r, g, b]) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2; if (!d) return [0, 0, l]; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; return [h, d / (1 - Math.abs(2 * l - 1)), l]; };
+  const hsl2hex = (h, s, l) => { s = Math.max(0, Math.min(1, s)); const k = (n) => (n + h / 30) % 12; const a = s * Math.min(l, 1 - l); const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))))); return '#' + [f(0), f(8), f(4)].map((x) => x.toString(16).padStart(2, '0')).join(''); };
+  const B600 = rgb2hsl(hex2rgb(BASE_SCALE[600]));
+  const makeScale = (base) => {
+    const [h, s] = rgb2hsl(hex2rgb(base)); const out = {};
+    Object.entries(BASE_SCALE).forEach(([k, hx]) => { const [, bs, bl] = rgb2hsl(hex2rgb(hx)); out[k] = hsl2hex(h, s * (bs / B600[1]), bl); });
+    return out;
+  };
+  BT.PALETTES = [
+    { id: 'verde', name: 'Verde Buenos Tiempos', desc: 'El verde del logo', scale: BASE_SCALE },
+    { id: 'oceano', name: 'Azul océano', desc: 'Sereno y profesional', base: '#2b5f9e' },
+    { id: 'petroleo', name: 'Verde petróleo', desc: 'Calmo, entre verde y azul', base: '#1d6f73' },
+    { id: 'lavanda', name: 'Lavanda', desc: 'Cálido y suave', base: '#5b4a9e' },
+    { id: 'terracota', name: 'Terracota', desc: 'Cálido, tierra y barro', base: '#a5502f' },
+    { id: 'vino', name: 'Vino', desc: 'Elegante y sobrio', base: '#8a2f4f' },
+    { id: 'oliva', name: 'Oliva', desc: 'Natural y tranquilo', base: '#5f6b25' },
+    { id: 'grafito', name: 'Grafito', desc: 'Neutro y moderno', base: '#3d4b5a' },
+  ].map((p) => Object.assign(p, { scale: p.scale || makeScale(p.base) }));
+  const ORIG = { '#297040': 600, '#8fc49f': 300, '#8fd0a2': 300, '#226037': 700, '#e2f0e6': 100, '#c2dfca': 200, '#1c4f2d': 800, '#f1f8f3': 50, '#378650': 500, '#5aa271': 400 };
+  BT.theme = {
+    key: 'bt-palette',
+    current() { let id = 'verde'; try { id = localStorage.getItem(this.key) || 'verde'; } catch (e) { /* */ } return BT.PALETTES.find((p) => p.id === id) || BT.PALETTES[0]; },
+    apply(id, opts = {}) {
+      const p = BT.PALETTES.find((x) => x.id === id) || BT.PALETTES[0];
+      const root = document.documentElement;
+      Object.entries(p.scale).forEach(([k, v]) => root.style.setProperty('--brand-' + k, v));
+      root.style.setProperty('--brand-rgb', hex2rgb(p.scale[600]).join(','));
+      root.dataset.palette = p.id;
+      BT.COLORS.brand = p.scale[600]; BT.COLORS.brandLight = p.scale[300];
+      const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', p.scale[600]);
+      if (opts.save) { try { localStorage.setItem(this.key, p.id); } catch (e) { /* */ } }
+      return p;
+    },
+  };
+  /** Pasa los verdes de marca fijos (en gráficos, SVG y PDF) a la paleta activa */
+  BT.tint = function (x) {
+    const sc = BT.theme.current().scale; if (sc === BASE_SCALE) return x;
+    const rgb = hex2rgb(sc[600]).join(',');
+    const str = (s) => s.replace(/#[0-9a-fA-F]{6}\b/g, (h) => { const k = ORIG[h.toLowerCase()]; return k ? sc[k] : h; }).replace(/rgba\(\s*41\s*,\s*112\s*,\s*64\s*,/g, 'rgba(' + rgb + ',');
+    const walk = (v, depth) => {
+      if (typeof v === 'string') return str(v);
+      if (depth > 8 || !v || typeof v !== 'object') return v;
+      if (Array.isArray(v)) return v.map((y) => walk(y, depth + 1));
+      if (Object.getPrototypeOf(v) !== Object.prototype) return v;
+      const o = {}; Object.keys(v).forEach((k) => { o[k] = walk(v[k], depth + 1); }); return o;
+    };
+    return walk(x, 0);
+  };
+  BT.theme.apply(BT.theme.current().id);
+
   BT.chartDefaults = function () {
     if (!window.Chart || BT._chartDefaultsSet) return; BT._chartDefaultsSet = true;
     const C = window.Chart;
@@ -369,7 +426,7 @@
     BT.chartDefaults();
     const el = typeof canvas === 'string' ? root.querySelector(canvas) : canvas;
     if (!el || !window.Chart) return null;
-    const ch = new window.Chart(el, config);
+    const ch = new window.Chart(el, BT.tint(config));
     BT._charts.push(ch);
     return ch;
   };

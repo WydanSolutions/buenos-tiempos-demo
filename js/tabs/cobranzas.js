@@ -13,7 +13,7 @@
     const cur = u.ym(u.today());
     const pend = ['r2', 'r5', 'r9', 'r15', 'r21', 'r25', 'r27'];
     db.invoices = db.invoices.filter((i) => !(i.mes === cur && pend.includes(i.residentId)));
-    const staff = ['Paula Benavídez', 'Paula Benavídez', 'Carolina Galarza'];
+    const staff = ['Paula Benavídez', 'Paula Benavídez', 'Dr. Miguel Yavarone'];
     db.invoices.forEach((i, k) => {
       i.cae = '9024' + String(1180000 + k * 37).padStart(7, '0'); i.serie = 'A'; i.estado = 'En Drive';
       const r = db.residents.find((x) => x.id === i.residentId);

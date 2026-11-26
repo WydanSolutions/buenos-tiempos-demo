@@ -25,7 +25,7 @@
   .mr-dose{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--ink-100);transition:background var(--d) var(--ease)}
   .mr-dose:last-child{border-bottom:0}
   .mr-dose:hover{background:var(--ink-50)}
-  .mr-dose.is-done{background:linear-gradient(90deg,rgba(226,240,230,.55),transparent 60%)}
+  .mr-dose.is-done{background:linear-gradient(90deg,color-mix(in srgb, var(--brand-100) 55%, transparent),transparent 60%)}
   .mr-time{width:58px;flex:none;font-weight:700;font-size:15px;color:var(--ink-900);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
   .mr-time small{display:block;font-size:10.5px;font-weight:600;color:var(--ink-400);letter-spacing:0}
   .mr-drug{flex:1;min-width:0}

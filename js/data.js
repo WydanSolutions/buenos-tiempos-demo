@@ -53,7 +53,7 @@
 (function () {
   'use strict';
   const BT = window.BT; const u = BT.u;
-  BT.DATA_VERSION = 16;
+  BT.DATA_VERSION = 17;
 
   /* RNG determinístico (los mismos datos en cada restablecimiento) */
   function rngFactory(seed) { let a = seed >>> 0; return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -234,11 +234,11 @@
 
     /* ---------------- Usuarios ---------------- */
     db.users = [
-      { id: 'u_dir', nombre: 'Carolina Galarza', role: 'direccion', sede: 'ALL', cargo: 'Directora general', email: 'direccion@buenostiempos.com.uy' },
+      { id: 'u_dir', nombre: 'Dr. Miguel Yavarone', role: 'direccion', sede: 'ALL', cargo: 'Director general', email: 'direccion@buenostiempos.com.uy' },
       { id: 'u_med', nombre: 'Dr. Fernando Aguirre', role: 'medico', sede: 'ALL', cargo: 'Médico Director Técnico', email: 'medico@buenostiempos.com.uy' },
       { id: 'u_enf', nombre: 'Lic. Mariana Castro Brum', role: 'enfermeria', sede: 'ALL', staffId: 's15', cargo: 'Jefa de Enfermería', email: 'enfermeria@buenostiempos.com.uy' },
-      { id: 'u_cui1', nombre: 'Lucía Fernández', role: 'cuidadora', sede: 'BT1', staffId: 's1', password: 'lucia2026', cargo: 'Cuidadora · BT1' },
-      { id: 'u_cui2', nombre: 'Mónica Píriz', role: 'cuidadora', sede: 'BT2', staffId: 's6', password: 'monica2026', cargo: 'Cuidadora · BT2' },
+      { id: 'u_cui1', nombre: 'Lucía Fernández', role: 'cuidadora', sede: 'BT1', staffId: 's1', password: '1234', cargo: 'Cuidadora · BT1' },
+      { id: 'u_cui2', nombre: 'Mónica Píriz', role: 'cuidadora', sede: 'BT2', staffId: 's6', password: '1234', cargo: 'Cuidadora · BT2' },
       { id: 'u_adm', nombre: 'Paula Benavídez', role: 'administracion', sede: 'ALL', cargo: 'Administración', email: 'administracion@buenostiempos.com.uy' },
       { id: 'u_fam1', nombre: 'Silvia Barreiro', role: 'familiar', sede: 'BT1', residentId: 'r1', cargo: 'Hija de María Elena' },
       { id: 'u_fam2', nombre: 'Martín Medina', role: 'familiar', sede: 'BT2', residentId: 'r18', cargo: 'Hijo de Julio César' },
@@ -639,11 +639,11 @@
 
     /* ---------------- Admisiones ---------------- */
     db.waitlist = [
-      { id: id('wl'), nombre: 'Aída Teresa Ramos', edad: 89, contacto: 'Claudia Ramos', vinculo: 'Hija', tel: '099 312 455', sedePref: 'BT2', dependencia: 'Severa', estado: 'Listo para ingresar', ts: at(D(-21), '10:00'), notas: 'Reserva de cama 8B en BT2. Ingreso previsto para la próxima semana.', seguimiento: [{ ts: at(D(-21), '10:00'), texto: 'Primer contacto telefónico.', autor: 'Paula Benavídez' }, { ts: at(D(-15), '16:00'), texto: 'Visita a la sede con la familia.', autor: 'Carolina Galarza' }, { ts: at(D(-6), '11:30'), texto: 'Evaluación médica de ingreso realizada. Barthel 30.', autor: 'Dr. Fernando Aguirre' }, { ts: at(D(-2), '09:00'), texto: 'Firma de contrato y pago de depósito de garantía.', autor: 'Paula Benavídez' }] },
+      { id: id('wl'), nombre: 'Aída Teresa Ramos', edad: 89, contacto: 'Claudia Ramos', vinculo: 'Hija', tel: '099 312 455', sedePref: 'BT2', dependencia: 'Severa', estado: 'Listo para ingresar', ts: at(D(-21), '10:00'), notas: 'Reserva de cama 8B en BT2. Ingreso previsto para la próxima semana.', seguimiento: [{ ts: at(D(-21), '10:00'), texto: 'Primer contacto telefónico.', autor: 'Paula Benavídez' }, { ts: at(D(-15), '16:00'), texto: 'Visita a la sede con la familia.', autor: 'Dr. Miguel Yavarone' }, { ts: at(D(-6), '11:30'), texto: 'Evaluación médica de ingreso realizada. Barthel 30.', autor: 'Dr. Fernando Aguirre' }, { ts: at(D(-2), '09:00'), texto: 'Firma de contrato y pago de depósito de garantía.', autor: 'Paula Benavídez' }] },
       { id: id('wl'), nombre: 'Héctor Luis Bentos', edad: 81, contacto: 'Marcelo Bentos', vinculo: 'Hijo', tel: '098 440 120', sedePref: 'BT1', dependencia: 'Leve', estado: 'Visita agendada', ts: at(D(-5), '15:20'), notas: 'Interesado en habitación compartida. Visita jueves 11:00.', seguimiento: [{ ts: at(D(-5), '15:20'), texto: 'Consulta por WhatsApp desde la web.', autor: 'Paula Benavídez' }] },
-      { id: id('wl'), nombre: 'Elena María Sartori', edad: 92, contacto: 'Ana Sartori', vinculo: 'Nieta', tel: '091 877 233', sedePref: 'BT1', dependencia: 'Moderada', estado: 'Evaluación', ts: at(D(-9), '12:00'), notas: 'Pendiente informe de su médico tratante.', seguimiento: [{ ts: at(D(-9), '12:00'), texto: 'Visita realizada.', autor: 'Carolina Galarza' }] },
+      { id: id('wl'), nombre: 'Elena María Sartori', edad: 92, contacto: 'Ana Sartori', vinculo: 'Nieta', tel: '091 877 233', sedePref: 'BT1', dependencia: 'Moderada', estado: 'Evaluación', ts: at(D(-9), '12:00'), notas: 'Pendiente informe de su médico tratante.', seguimiento: [{ ts: at(D(-9), '12:00'), texto: 'Visita realizada.', autor: 'Dr. Miguel Yavarone' }] },
       { id: id('wl'), nombre: 'Juan José Ferrando', edad: 77, contacto: 'Laura Ferrando', vinculo: 'Esposa', tel: '094 655 908', sedePref: 'Indistinta', dependencia: 'Moderada', estado: 'Nuevo', ts: at(D(-1), '18:45'), notas: '', seguimiento: [] },
-      { id: id('wl'), nombre: 'Gloria Estela Píriz', edad: 86, contacto: 'Fernando Píriz', vinculo: 'Hijo', tel: '099 102 774', sedePref: 'BT2', dependencia: 'Severa', estado: 'En espera de cama', ts: at(D(-34), '09:10'), notas: 'Prefiere BT2 por cercanía. Avisar ante vacante.', seguimiento: [{ ts: at(D(-34), '09:10'), texto: 'Visita y evaluación completa.', autor: 'Carolina Galarza' }] },
+      { id: id('wl'), nombre: 'Gloria Estela Píriz', edad: 86, contacto: 'Fernando Píriz', vinculo: 'Hijo', tel: '099 102 774', sedePref: 'BT2', dependencia: 'Severa', estado: 'En espera de cama', ts: at(D(-34), '09:10'), notas: 'Prefiere BT2 por cercanía. Avisar ante vacante.', seguimiento: [{ ts: at(D(-34), '09:10'), texto: 'Visita y evaluación completa.', autor: 'Dr. Miguel Yavarone' }] },
       { id: id('wl'), nombre: 'Mabel Cristina Ruiz', edad: 84, contacto: 'Sergio Ruiz', vinculo: 'Sobrino', tel: '092 311 650', sedePref: 'BT1', dependencia: 'Leve', estado: 'Descartado', ts: at(D(-50), '14:00'), notas: 'Optó por otra residencia por precio.', seguimiento: [] },
     ];
     db.admissionChecklist = ['Entrevista con la familia y visita a la sede', 'Evaluación médica de ingreso y escala de Barthel', 'Ficha de usuario (Ordenanza 483/017)', 'Copia de cédula del residente y del referente', 'Consentimiento informado firmado', 'Contrato de servicios y depósito de garantía', 'Indicaciones médicas y medicación vigente', 'Carné de vacunas', 'Datos de mutualista y emergencia móvil', 'Asignación de habitación y cama', 'Inventario de pertenencias', 'Alta en el portal del familiar'];
@@ -651,7 +651,7 @@
     /* ---------------- Familias ---------------- */
     const GR = ['linear-gradient(135deg,#8fc49f,#297040)', 'linear-gradient(135deg,#f3c98b,#d98c5f)', 'linear-gradient(135deg,#a9b8e8,#6b5ba8)', 'linear-gradient(135deg,#9ed3e0,#3f78b5)', 'linear-gradient(135deg,#f2b8c6,#b5677a)', 'linear-gradient(135deg,#d8d2a0,#8a7a2e)'];
     db.posts = [
-      { id: id('po'), sede: 'BT1', residentId: null, ts: at(D(0), '11:20'), autor: 'Carolina Galarza', tipo: 'Foto', titulo: 'Mañana de huerta', texto: 'Hoy plantamos lechugas y albahaca en la huerta del fondo. ¡Gran participación!', foto: { grad: GR[0], icon: 'sprout', caption: 'Huerta · BT1' } },
+      { id: id('po'), sede: 'BT1', residentId: null, ts: at(D(0), '11:20'), autor: 'Dr. Miguel Yavarone', tipo: 'Foto', titulo: 'Mañana de huerta', texto: 'Hoy plantamos lechugas y albahaca en la huerta del fondo. ¡Gran participación!', foto: { grad: GR[0], icon: 'sprout', caption: 'Huerta · BT1' } },
       { id: id('po'), sede: 'BT1', residentId: 'r1', ts: at(D(-1), '17:40'), autor: 'Patricia Gómez Silva', tipo: 'Novedad', titulo: 'María Elena en el taller de memoria', texto: 'María Elena participó muy contenta del taller de memoria y nos contó anécdotas de su época de maestra.', foto: { grad: GR[1], icon: 'brain', caption: 'Taller de memoria' } },
       { id: id('po'), sede: 'ALL', residentId: null, ts: at(D(-2), '10:00'), autor: 'Dirección', tipo: 'Comunicado', titulo: 'Horario de visitas para las fiestas', texto: 'Durante diciembre ampliamos el horario de visitas de 10:00 a 20:00. Les pedimos agendar la visita desde el portal para organizar mejor los espacios.', foto: null },
       { id: id('po'), sede: 'BT2', residentId: null, ts: at(D(-3), '16:10'), autor: 'Silvana Rocha Trindade', tipo: 'Foto', titulo: 'Tarde de tango', texto: 'Musicoterapia con tangos y milongas. Julio César se animó a cantar "Mi Buenos Aires querido".', foto: { grad: GR[2], icon: 'music', caption: 'Musicoterapia · BT2' } },
@@ -691,7 +691,7 @@
     };
 
     /* ---------------- Habilitaciones y vencimientos ---------------- */
-    const C = (sede, item, organismo, dias, responsable = 'Carolina Galarza') => ({ id: id('hb'), sede, item, organismo, vence: D(dias), doc: item.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.pdf', responsable });
+    const C = (sede, item, organismo, dias, responsable = 'Dr. Miguel Yavarone') => ({ id: id('hb'), sede, item, organismo, vence: D(dias), doc: item.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.pdf', responsable });
     db.compliance = [
       C('BT1', 'Habilitación del establecimiento', 'MSP', 410), C('BT2', 'Habilitación del establecimiento', 'MSP', 22),
       C('BT1', 'Inscripción en el Registro ELEPEM', 'MIDES', 260), C('BT2', 'Inscripción en el Registro ELEPEM', 'MIDES', 260),

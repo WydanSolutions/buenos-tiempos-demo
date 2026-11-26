@@ -281,7 +281,7 @@
       D.section('7. Registros obligatorios', D.table([
         { label: 'Registro', render: (c) => '<b>' + esc(c.item) + '</b>' }, { label: 'Residente', render: (c) => esc(c.who) }, { label: 'Constancia', render: (c) => '<span class="muted">' + c.detail + '</span>' }, { label: 'Estado', align: 'center', render: badge },
       ], checks.filter((c) => c.area === 'reg'), { compact: true })) +
-      D.signatures(['Dirección · Carolina Galarza', 'Médico Director Técnico · Dr. Fernando Aguirre', 'Inspector/a actuante']);
+      D.signatures(['Dirección · Dr. Miguel Yavarone', 'Médico Director Técnico · Dr. Fernando Aguirre', 'Inspector/a actuante']);
     D.open({ title: 'Informe Modo inspección', kicker: 'Informe de cumplimiento', subtitle: esc(BT.sedeName()) + ' · Relevamiento del ' + u.fmtDate(new Date()), landscape: true, code: 'INSP-' + u.todayIso().replace(/-/g, '') + '-' + BT.sedeLabel().slice(0, 3).toUpperCase(), filename: 'Informe Modo inspección - ' + BT.sedeLabel() + ' - ' + u.todayIso(), body });
   }
   function pdfVencimientos() {

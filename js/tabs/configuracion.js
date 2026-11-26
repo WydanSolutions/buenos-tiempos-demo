@@ -23,7 +23,7 @@
   BT.addCSS('cfg', `
     .perm-grid th, .perm-grid td { text-align: center; }
     .perm-grid th:first-child, .perm-grid td:first-child { text-align: left; }
-    .perm-yes { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand-600); color: #fff; box-shadow: 0 2px 6px -2px rgba(41,112,64,.6); }
+    .perm-yes { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand-600); color: #fff; box-shadow: 0 2px 6px -2px color-mix(in srgb, var(--brand-600) 60%, transparent); }
     .perm-yes svg { width: 13px; height: 13px; stroke-width: 3; }
     .perm-no { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--ink-200); }
     .perm-grid tbody tr:hover .perm-yes { transform: scale(1.08); transition: transform var(--d) var(--ease-spring); }
@@ -69,7 +69,52 @@
       { id: 'sedes', label: 'Sedes', icon: 'building-2' },
       { id: 'params', label: 'Parámetros', icon: 'sliders-horizontal' },
       { id: 'audit', label: 'Registro de accesos', icon: 'history' },
-    ], (p, id) => ({ users: renderUsers, roles: renderRoles, sedes: renderSedes, params: renderParams, audit: renderAudit }[id](p)));
+      { id: 'theme', label: 'Apariencia', icon: 'palette' },
+    ], (p, id) => ({ users: renderUsers, roles: renderRoles, sedes: renderSedes, params: renderParams, audit: renderAudit, theme: renderTheme }[id](p)));
+  }
+
+
+  /* ---------------- Apariencia: paletas de color ---------------- */
+  BT.addCSS('apariencia', `
+    .pal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+    .pal{position:relative;text-align:left;border:1.5px solid var(--line);border-radius:18px;background:var(--surface);padding:0;overflow:hidden;cursor:pointer;transition:transform var(--d-fast) var(--ease),box-shadow var(--d-fast) var(--ease),border-color var(--d-fast)}
+    .pal:hover{transform:translateY(-3px);box-shadow:var(--sh-3)}
+    .pal.on{border-color:var(--ink-900);box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--ink-900)}
+    .pal-mock{display:grid;grid-template-columns:34% 1fr;height:104px}
+    .pal-mock .sb{padding:10px 8px;display:flex;flex-direction:column;gap:6px}
+    .pal-mock .sb i{display:block;height:7px;border-radius:4px;background:rgba(255,255,255,.22)}
+    .pal-mock .sb i.a{background:rgba(255,255,255,.55);width:80%}
+    .pal-mock .mn{padding:10px;display:flex;flex-direction:column;gap:7px;background:#f6f5f1}
+    .pal-mock .hero{height:34px;border-radius:9px}
+    .pal-mock .row2{display:flex;gap:6px}
+    .pal-mock .row2 span{flex:1;height:22px;border-radius:7px}
+    .pal-b{padding:12px 14px 14px}
+    .pal-b b{display:block;font-size:var(--fs-md);color:var(--ink-950)}
+    .pal-b small{color:var(--ink-500);font-size:var(--fs-xs)}
+    .pal-sw{display:flex;gap:4px;margin-top:10px}
+    .pal-sw i{flex:1;height:14px;border-radius:4px}
+    .pal .on-badge{position:absolute;top:8px;right:8px;display:none}
+    .pal.on .on-badge{display:inline-flex}
+    .pal-prev{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  `);
+  function renderTheme(p) {
+    const cur = BT.theme.current().id;
+    p.innerHTML = '<section class="card"><div class="card-h"><div><h3>' + ic('palette') + 'Paleta de colores</h3><div class="sub">Elegí los colores de la interfaz. El cambio se aplica al instante en todas las pantallas y en los PDF.</div></div></div><div class="card-b"><div class="pal-grid">' +
+      BT.PALETTES.map((x) => { const s = x.scale; return '<button type="button" class="pal' + (x.id === cur ? ' on' : '') + '" data-pal="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' +
+        '<span class="on-badge badge ok">' + ic('check', 'ic-xs') + 'En uso</span>' +
+        '<div class="pal-mock"><div class="sb" style="background:linear-gradient(185deg,' + s[800] + ',' + s[950] + ')"><i class="a"></i><i></i><i></i><i></i></div><div class="mn"><div class="hero" style="background:linear-gradient(135deg,' + s[600] + ',' + s[900] + ')"></div><div class="row2"><span style="background:' + s[100] + '"></span><span style="background:' + s[300] + '"></span><span style="background:#fff;border:1px solid ' + s[200] + '"></span></div></div></div>' +
+        '<div class="pal-b"><b>' + esc(x.name) + '</b><small>' + esc(x.desc) + '</small><div class="pal-sw">' + [950, 700, 600, 400, 200, 50].map((k) => '<i style="background:' + s[k] + '"></i>').join('') + '</div></div></button>'; }).join('') +
+      '</div></div></section>' +
+      '<section class="card mt-16"><div class="card-h"><div><h3>' + ic('eye') + 'Vista previa</h3><div class="sub">Así se ven los elementos principales con la paleta elegida</div></div></div><div class="card-b"><div class="pal-prev">' +
+      '<button class="btn primary">' + ic('plus') + 'Botón principal</button><button class="btn soft">' + ic('check') + 'Botón suave</button>' + ui.badge('Etiqueta', 'brand', { icon: 'sparkles' }) + ui.badge('Al día', 'ok', { icon: 'circle-check' }) + ui.badge('Vencido', 'danger', { icon: 'circle-alert' }) +
+      '<span class="switch"><input type="checkbox" checked aria-label="Ejemplo"><span></span></span></div>' +
+      '<p class="muted mt-16" style="font-size:var(--fs-sm)">' + ic('info', 'ic-xs') + ' Los colores de estado (al día, pendiente, vencido) no cambian, para que siempre se lean igual.</p></div></section>';
+    p.querySelectorAll('[data-pal]').forEach((b) => b.addEventListener('click', () => {
+      const pal = BT.theme.apply(b.dataset.pal, { save: true });
+      BT.audit('Cambió la paleta de colores', 'Configuración', { detail: pal.name });
+      ui.toast('Paleta «' + pal.name + '» aplicada', { icon: 'palette', sub: 'Se ve en todas las pantallas y en los PDF' });
+      BT.refresh();
+    }));
   }
 
   /* ---------------- Usuarios ---------------- */
@@ -104,7 +149,7 @@
       onMount: (m, close) => m.querySelector('[data-save]').addEventListener('click', () => {
         const f = m.querySelector('#nuForm'); if (!ui.validate(f)) return; const d = ui.formData(f);
         const x = { id: u.uid('u'), nombre: d.nombre, role: d.role, sede: d.sede, cargo: d.cargo || BT.ROLES[d.role].label, email: d.email, activo: true };
-        if (d.role === 'cuidadora') x.password = u.norm(d.nombre.split(' ')[0]) + '2026';
+        if (d.role === 'cuidadora') x.password = '1234';
         BT.db.users.push(x); BT.audit('Creó', 'Usuario del sistema', { detail: d.nombre + ' · ' + BT.ROLES[d.role].label }); BT.save();
         close(); renderUsers(p); ui.enhance(p);
         ui.toast('Usuario creado', { sub: d.nombre + (x.password ? ' · contraseña inicial ' + x.password : ''), icon: 'user-plus' });

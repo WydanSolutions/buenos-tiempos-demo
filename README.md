@@ -21,11 +21,11 @@ node tools/build.js
 
 | Rol | Usuario | Cómo entra |
 | --- | --- | --- |
-| Dirección | Carolina Galarza | clic |
+| Dirección | Dr. Miguel Yavarone | clic |
 | Médico Director Técnico | Dr. Fernando Aguirre | clic |
 | Enfermería | Lic. Mariana Castro Brum | clic |
-| Cuidadora (tablet) | Lucía Fernández · BT1 | contraseña **lucia2026** (o botón QR) |
-| Cuidadora (tablet) | Mónica Píriz · BT2 | contraseña **monica2026** |
+| Cuidadora (tablet) | Lucía Fernández · BT1 | contraseña **1234** (o botón QR) |
+| Cuidadora (tablet) | Mónica Píriz · BT2 | contraseña **1234** |
 | Administración | Paula Benavídez | clic |
 | Familiar | Silvia Barreiro (hija de María Elena) · Martín Medina | clic |
 
@@ -34,7 +34,7 @@ Las fechas de los datos se generan relativas al día de hoy, así la demo siempr
 
 ## Recorridos sugeridos
 
-1. **Cuidadora en tablet:** contraseña lucia2026 → *Dar medicación* → marcar las dosis del turno → *Registrar caída o incidente* → la caída queda en la Historia clínica (pestaña Caídas y Evoluciones) y en la Auditoría.
+1. **Cuidadora en tablet:** contraseña 1234 → *Dar medicación* → marcar las dosis del turno → *Registrar caída o incidente* → la caída queda en la Historia clínica (pestaña Caídas y Evoluciones) y en la Auditoría.
 2. **Ratio de cuidadoras:** entrar como Dirección → en Inicio aparece «Turno noche BT2 por debajo del ratio» (Jimena con certificado médico) → clic → en el planificador arrastrar a Karina (volante) al turno noche → la alerta desaparece.
 3. **Finanzas:** Dirección → Finanzas → alternar BT1 / BT2 / Consolidado arriba → gráficos mes a mes, comparativo y reporte PDF.
 4. **Facturas a Google Drive:** Dirección → Cobranzas → *Facturas* → *Cargar factura* → número de factura + PDF o foto (o *Usar factura de ejemplo*) → vista previa → *Guardar en Drive*. Queda en `Buenos Tiempos / Facturas / año / mes / sede` y vinculada a la cuenta del residente. La facturación se hace en el sistema de facturación de la residencial; acá solo se carga el comprobante.

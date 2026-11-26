@@ -167,7 +167,7 @@
         ui.card({ title: 'Historial', icon: 'history', bodyCls: 'flush', body: ui.table([{ label: 'Fecha', render: (x) => u.fmtDate(x.fecha) }, { label: 'Puntaje', align: 'num', render: (x) => '<span class="bscore">' + x.score + '<small>/100</small></span>' }, { label: 'Grado', render: (x) => { const gg = BT.depGrade(x.score); return ui.badge(gg.label, gg.tone, { dot: true }); } }, { label: 'Evaluó', render: (x) => esc(x.evaluador) }], [...hist].reverse(), { compact: true }) }) + '</div></div>';
       setTimeout(() => {
         const ctx = panel.querySelector('#bChart'); if (!ctx) return;
-        const g2 = ctx.getContext('2d').createLinearGradient(0, 0, 0, 240); g2.addColorStop(0, 'rgba(41,112,64,.25)'); g2.addColorStop(1, 'rgba(41,112,64,0)');
+        const g2 = ctx.getContext('2d').createLinearGradient(0, 0, 0, 240); g2.addColorStop(0, BT.tint('rgba(41,112,64,.25)')); g2.addColorStop(1, BT.tint('rgba(41,112,64,0)'));
         BT.chart(ctx, {
           type: 'line',
           data: { labels: hist.map((x) => u.fmtDate(x.fecha)), datasets: [{ label: 'Barthel', data: hist.map((x) => x.score), borderColor: '#297040', backgroundColor: g2, fill: true, pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#297040', pointBorderWidth: 2 }, { label: 'Umbral dependencia (40)', data: hist.map(() => 40), borderColor: '#c4473c', borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0, fill: false }] },

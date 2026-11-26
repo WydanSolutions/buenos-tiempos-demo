@@ -17,7 +17,7 @@
   .bedbtn:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
   .bedbtn .ini{font-size:13px;letter-spacing:.02em}
   .bedbtn .cm{font-size:9.5px;font-weight:600;color:var(--brand-700);opacity:.8}
-  .bedbtn.on{background:var(--brand-600);border-color:var(--brand-700);color:#fff;box-shadow:0 6px 16px -6px rgba(41,112,64,.6)}
+  .bedbtn.on{background:var(--brand-600);border-color:var(--brand-700);color:#fff;box-shadow:0 6px 16px -6px color-mix(in srgb, var(--brand-600) 60%, transparent)}
   .bedbtn.on .cm{color:#fff}
   .bedbtn.free{background:transparent;border-style:dashed;border-color:var(--line-strong);color:var(--ink-300);cursor:default}
   .bedbtn.res{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn);cursor:default}
@@ -56,7 +56,7 @@
   .pend-row.done span{text-decoration:line-through;color:var(--ink-400)}
   .clock-big{font-size:28px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
   .qr-frame{position:relative;width:220px;height:220px;margin:6px auto 0;border-radius:22px;background:repeating-conic-gradient(#262625 0 25%,#fff 0 50%) 0 0/22px 22px;opacity:.9;overflow:hidden;box-shadow:inset 0 0 0 10px #fff,0 0 0 1px var(--line)}
-  .qr-frame::after{content:"";position:absolute;left:8%;right:8%;height:3px;border-radius:3px;background:var(--brand-400);box-shadow:0 0 18px 4px rgba(90,162,113,.7);animation:scan 1.2s ease-in-out infinite alternate}
+  .qr-frame::after{content:"";position:absolute;left:8%;right:8%;height:3px;border-radius:3px;background:var(--brand-400);box-shadow:0 0 18px 4px color-mix(in srgb, var(--brand-400) 70%, transparent);animation:scan 1.2s ease-in-out infinite alternate}
   @keyframes scan{from{top:10%}to{top:88%}}
   `);
 

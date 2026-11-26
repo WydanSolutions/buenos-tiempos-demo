@@ -276,13 +276,13 @@
   .gt-months span{padding:9px 6px;border-left:1px solid var(--ink-100)}
   .gt-head{background:var(--surface-2);position:sticky;top:0}
   .gt-track{position:relative;height:44px;background-image:linear-gradient(90deg,var(--ink-100) 1px,transparent 1px);background-size:calc(100%/12) 100%}
-  .gt-bar{position:absolute;top:12px;height:20px;border-radius:6px;background:linear-gradient(90deg,var(--brand-500),var(--brand-600));box-shadow:0 2px 6px -2px rgba(41,112,64,.5);font-size:10px;font-weight:600;color:#fff;padding:0 6px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;transform-origin:left;animation:barGrow .8s var(--ease-out) both;min-width:6px}
+  .gt-bar{position:absolute;top:12px;height:20px;border-radius:6px;background:linear-gradient(90deg,var(--brand-500),var(--brand-600));box-shadow:0 2px 6px -2px color-mix(in srgb, var(--brand-600) 50%, transparent);font-size:10px;font-weight:600;color:#fff;padding:0 6px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;transform-origin:left;animation:barGrow .8s var(--ease-out) both;min-width:6px}
   .gt-bar.pend{background:repeating-linear-gradient(-45deg,#e7b35a,#e7b35a 6px,#efc77f 6px,#efc77f 12px);color:#5c3a05;box-shadow:none}
   .gt-bar.oth{background:linear-gradient(90deg,#8494a8,#66778c);box-shadow:none}
   .gt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);opacity:.55;z-index:2}
   .gt-heat{display:flex;height:16px;gap:1px;padding:0 0}
   .gt-heat i{flex:1;border-radius:2px;background:var(--ink-100)}
-  .gt-heat i.h1{background:#c2dfca}.gt-heat i.h2{background:#f0c47a}.gt-heat i.h3{background:#e0796d}
+  .gt-heat i.h1{background:var(--brand-200)}.gt-heat i.h2{background:#f0c47a}.gt-heat i.h3{background:#e0796d}
   .tmpl{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px;border-radius:var(--r-md);border:1px solid var(--line);background:#fff;transition:all var(--d) var(--ease);width:100%}
   .tmpl:hover{border-color:var(--brand-300);box-shadow:var(--sh-2)}
   .tmpl.on{border-color:var(--brand-500);box-shadow:0 0 0 3px var(--brand-50);background:linear-gradient(180deg,var(--brand-50),#fff)}

@@ -33,6 +33,7 @@
   /** KPI animado. value numérico; money=true → $U; decimals; suffix */
   /** Mini gráfico de tendencia (SVG en línea). values: números; color opcional */
   ui.spark = function (values, color = '#297040', h = 42) {
+    color = BT.tint(color);
     const v = (values || []).filter((x) => isFinite(x)); if (v.length < 2) return '';
     const min = Math.min(...v), max = Math.max(...v), rg = max - min || 1, W = 100;
     const pts = v.map((x, i) => [(i / (v.length - 1)) * W, h - 4 - ((x - min) / rg) * (h - 12)]);
@@ -55,6 +56,7 @@
   };
   ui.bar = (pct, tone = '', thin) => '<div class="bar ' + tone + (thin ? ' thin' : '') + '"><span style="width:' + u.clamp(pct, 0, 100) + '%"></span></div>';
   ui.ring = function (pct, label, sub, color) {
+    color = color && BT.tint(color);
     const r = 52, c = 2 * Math.PI * r;
     return '<div class="ring"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="' + r + '" fill="none" stroke-width="10"/><circle class="val" data-ring="' + pct + '" cx="60" cy="60" r="' + r + '" fill="none" stroke-width="10" stroke-dasharray="' + c + '" stroke-dashoffset="' + c + '"' + (color ? ' style="stroke:' + color + '"' : '') + '/></svg><div class="lbl"><div><b>' + label + '</b><span>' + (sub || '') + '</span></div></div></div>';
   };

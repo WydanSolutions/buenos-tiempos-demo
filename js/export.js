@@ -106,12 +106,13 @@
     const emitido = 'Emitido el ' + u.fmtDate(now) + ' a las ' + u.fmtTime(now) + ' por ' + userLine();
     const css = DOC_CSS.replace('__FONT__', BT.FONT_DATA || '').replace('__ORIENT__', landscape ? 'landscape' : 'portrait').replace('__EMITIDO__', cssStr(emitido)).replace('__TITLE__', cssStr(title)).replace('__WYDAN__', wydanSvg());
     const sedeLine = sObj ? esc(sObj.nombre) + ' · ' + esc(sObj.direccion) + ', ' + esc(sObj.barrio) + ' · Tel. ' + esc(sObj.tel) : 'Sedes BT1 (Malvín) y BT2 (Unión) · Montevideo';
-    return '<!doctype html><html lang="es-UY"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body><div class="paper">' +
+    const out = '<!doctype html><html lang="es-UY"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body><div class="paper">' +
       '<header class="dh"><div class="brand"><img src="' + BT.LOGO + '" alt=""><div><div class="n">Residencial Buenos Tiempos</div><div class="s">' + sedeLine + '<br>' + esc(BT.db.meta.company) + ' · RUT ' + esc(BT.db.meta.rut) + '</div></div></div>' +
       '<div class="dmeta"><div class="k">' + esc(kicker) + '</div><h1>' + esc(title) + '</h1>' + (subtitle ? '<div class="sub">' + subtitle + '</div>' : '') + '<div class="code">' + esc(code || ('BT-' + now.getFullYear() + u.pad(now.getMonth() + 1) + u.pad(now.getDate()) + '-' + String(now.getHours()) + u.pad(now.getMinutes()))) + '</div></div></header>' +
       body +
       '<div class="screen-foot"><span>' + esc(emitido) + '</span><span class="wy">Desarrollado por <img src="' + BT.WYDAN + '" alt="Wydan Solutions"></span><span>Página 1 de 1</span></div>' +
       '</div></body></html>';
+    return BT.tint(out);
   };
 
   /** Vista previa animada con descarga (imprimir → Guardar como PDF) */
@@ -170,6 +171,7 @@
   /** Renderiza un gráfico Chart.js a imagen nítida (3x) para documentos */
   doc.chart = function (config, { w = 680, h = 240, caption = '' } = {}) {
     if (!window.Chart) return '';
+    config = BT.tint(config);
     BT.chartDefaults();
     const c = document.createElement('canvas'); c.width = w; c.height = h; c.style.width = w + 'px'; c.style.height = h + 'px';
     const holder = document.createElement('div'); holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:' + w + 'px;height:' + h + 'px'; holder.appendChild(c); document.body.appendChild(holder);
