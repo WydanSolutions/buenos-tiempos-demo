@@ -1721,6 +1721,7 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
     });
     if (!ok) return;
     try { localStorage.removeItem(BT.STORAGE_KEY); } catch (e) { }
+    if (BT.photos) BT.photos.clear();
     BT.db = BT.seed(); BT.db.meta.seedDay = u.todayIso(); BT.db.meta.simAt = Date.now(); BT.save();
     BT.ui.toast('Demo restablecida', { sub: 'Los datos originales se cargaron de nuevo', icon: 'rotate-ccw' });
     BT.shell.render(); BT.render();
@@ -2302,6 +2303,170 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
   ui.flash = (el) => { if (!el) return; el.classList.remove('flash-ok'); void el.offsetWidth; el.classList.add('flash-ok'); };
   /** Botón de dosis con check animado */
   ui.dose = (state = '', attrs = '', lg) => '<button class="dose ' + state + (lg ? ' lg' : '') + '" ' + attrs + '>' + (state === 'done' ? BT.check : state === 'miss' ? ic('x', 'ic-sm') : state === 'ref' ? ic('hand', 'ic-sm') : ic('plus', 'ic-sm')) + '</button>';
+
+  /* ==========================================================================
+     Fotos de perfil (residentes y personal) y archivos adjuntos
+     En la demo se guardan en el navegador; en producción van al servidor.
+     ========================================================================== */
+  const PKEY = 'bt-photos', FKEY = 'bt-files';
+  let photos = null; let pVer = 0;
+  const loadPhotos = () => { if (photos) return photos; try { photos = JSON.parse(localStorage.getItem(PKEY) || '{}'); } catch (e) { photos = {}; } return photos; };
+  BT.photos = {
+    get: (key) => loadPhotos()[key] || null,
+    set(key, dataUrl) { const p = loadPhotos(); if (dataUrl) p[key] = dataUrl; else delete p[key]; pVer++; try { localStorage.setItem(PKEY, JSON.stringify(p)); return true; } catch (e) { return false; } },
+    clear() { photos = {}; pVer++; try { localStorage.removeItem(PKEY); localStorage.removeItem(FKEY); } catch (e) { /* */ } },
+  };
+  BT.files = {
+    get(id) { try { return JSON.parse(localStorage.getItem(FKEY) || '{}')[id] || null; } catch (e) { return null; } },
+    put(id, dataUrl) { try { const all = JSON.parse(localStorage.getItem(FKEY) || '{}'); all[id] = dataUrl; localStorage.setItem(FKEY, JSON.stringify(all)); return true; } catch (e) { return false; } },
+  };
+  /* Nombre → clave de foto (los avatares se arman por nombre en toda la app) */
+  let nameMap = null; let nameSig = '';
+  const photoForName = (name) => {
+    if (!BT.db || !name) return null;
+    const p = loadPhotos(); if (!Object.keys(p).length) return null;
+    const sig = pVer + '|' + BT.db.residents.length + '|' + BT.db.staff.length + '|' + BT.db.users.length;
+    if (sig !== nameSig) {
+      nameMap = {}; nameSig = sig;
+      BT.db.residents.forEach((r) => { const k = 'res:' + r.id; if (p[k]) { nameMap[BT.fullName(r)] = k; nameMap[BT.shortName(r)] = nameMap[BT.shortName(r)] || k; } });
+      BT.db.staff.forEach((s) => { const k = 'stf:' + s.id; if (p[k]) nameMap[s.nombre] = k; });
+      BT.db.users.forEach((x) => { const k = x.staffId ? 'stf:' + x.staffId : 'usr:' + x.id; if (p[k]) nameMap[x.nombre] = k; });
+    }
+    const k = nameMap[name]; return k ? p[k] : null;
+  };
+  BT.photoKey = { resident: (r) => 'res:' + r.id, staff: (s) => 'stf:' + s.id };
+  const avatarBase = ui.avatar;
+  ui.avatar = function (name, opts = {}) {
+    const src = opts.photo === false ? null : (opts.photo || photoForName(name));
+    if (!src) return avatarBase(name, opts);
+    return '<span class="avatar has-photo ' + (opts.size || '') + (opts.sq ? ' sq' : '') + '"' + (opts.tip ? ' data-tip="' + esc(name) + '"' : '') + '><img src="' + src + '" alt="' + esc(name) + '" loading="lazy" decoding="async"></span>';
+  };
+  /** Avatar grande editable (con botón de cámara) */
+  ui.avatarEdit = (name, key, size = 'xl') => '<button type="button" class="av-edit" data-photo="' + key + '" data-name="' + esc(name) + '" aria-label="Cambiar la foto de ' + esc(name) + '" data-tip="' + (BT.photos.get(key) ? 'Cambiar foto' : 'Agregar foto') + '">' + ui.avatar(name, { size }) + '<span class="av-cam">' + ic('camera', 'ic-xs') + '</span></button>';
+
+  BT.addCSS('photos', `
+    .avatar.has-photo{padding:0;overflow:hidden;background:var(--surface-2)}
+    .avatar.has-photo img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+    .av-edit{position:relative;border:0;background:none;padding:0;cursor:pointer;border-radius:50%;flex:none;display:inline-block;line-height:0}
+    .av-edit .av-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--brand-600);color:#fff;box-shadow:0 0 0 3px #fff,var(--sh-2);transition:transform var(--d-fast) var(--ease)}
+    .av-edit .avatar.lg+.av-cam{width:22px;height:22px;right:-4px;bottom:-4px}
+    .av-edit:hover .av-cam{transform:scale(1.12)}
+    .av-edit:focus-visible{outline:3px solid var(--brand-300);outline-offset:3px}
+    .ph-grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:22px;align-items:start}
+    .ph-stage{position:relative;width:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;background:repeating-conic-gradient(#eeece7 0 25%,#f7f6f2 0 50%) 0 0/22px 22px;touch-action:none;user-select:none}
+    .ph-stage img,.ph-stage video{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;pointer-events:none}
+    .ph-stage video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+    .ph-stage.drag{cursor:grabbing}.ph-stage.has{cursor:grab}
+    .ph-mask{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(circle closest-side at center,transparent 0 94%,rgba(15,20,18,.55) 94.6%)}
+    .ph-mask::after{content:"";position:absolute;inset:3%;border-radius:50%;border:2px dashed rgba(255,255,255,.85)}
+    .ph-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-500);text-align:center;padding:20px}
+    .ph-empty .ic{width:44px;height:44px;color:var(--ink-300);stroke-width:1.5}
+    .ph-zoom{display:flex;align-items:center;gap:10px;margin-top:12px;color:var(--ink-500)}
+    .ph-zoom input{flex:1;accent-color:var(--brand-600)}
+    .ph-side{display:flex;flex-direction:column;gap:12px}
+    .ph-prev{display:flex;align-items:flex-end;gap:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
+    .ph-tip{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--brand-50);border:1px solid var(--brand-100);font-size:var(--fs-sm);color:var(--ink-700)}
+    .ph-tip .ic{color:var(--brand-600);flex:none;margin-top:2px}
+    @media (max-width:760px){.ph-grid{grid-template-columns:1fr}}
+  `);
+
+  const readFile = (f) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(f); });
+  const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+
+  /**
+   * Editor de foto: subir o sacar con la cámara, recortar (arrastrar + zoom) y guardar 360×360.
+   * opts: { title, name, key, hint, source (dataURL inicial), onSave(dataUrl|null) }
+   */
+  BT.photoEditor = function ({ title = 'Foto de perfil', name = '', key, hint, source, onSave } = {}) {
+    const current = key ? BT.photos.get(key) : null;
+    let img = null, scale = 1, minScale = 1, x = 0, y = 0, stream = null;
+    ui.modal({
+      title, icon: 'camera', size: 'lg', sub: name ? 'Para ' + name : '',
+      body: '<div class="ph-grid"><div><div class="ph-stage" id="phStage"><div class="ph-empty" id="phEmpty">' + ic('image-plus') + '<b>Subí una foto o sacala con la cámara</b><span style="font-size:var(--fs-xs)">JPG o PNG · la cara dentro del círculo</span></div><div class="ph-mask"></div></div>' +
+        '<div class="ph-zoom">' + ic('zoom-out', 'ic-sm') + '<input type="range" id="phZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom" disabled>' + ic('zoom-in', 'ic-sm') + '</div></div>' +
+        '<div class="ph-side"><div class="row gap-8 wrap"><label class="btn primary">' + ic('upload') + 'Subir foto<input type="file" id="phFile" accept="image/*" hidden></label><button type="button" class="btn" data-cam>' + ic('camera') + 'Sacar foto</button>' +
+        '<label class="btn ghost hidden" id="phCapLbl">' + ic('smartphone') + 'Cámara del celular<input type="file" id="phCap" accept="image/*" capture="environment" hidden></label></div>' +
+        '<div class="ph-tip">' + ic('lightbulb', 'ic-sm') + '<div>' + (hint || 'Podés usar la <b>foto del carné o de la cédula</b>: sacale una foto al documento y después arrastrá y hacé zoom para dejar la cara dentro del círculo.') + '</div></div>' +
+        '<div><div class="flabel" style="margin-bottom:6px">Así se va a ver</div><div class="ph-prev" id="phPrev">' + ['xl', 'lg', '', 'sm'].map((s) => ui.avatar(name, { size: s, photo: current || false })).join('') + '</div></div></div></div>',
+      foot: (current ? '<button class="btn ghost danger-text" data-del style="margin-right:auto">' + ic('trash-2') + 'Quitar foto</button>' : '') + '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-ok disabled>' + ic('check') + 'Guardar foto</button>',
+      onClose: () => stopCam(),
+      onMount: (el, close) => {
+        const $ = (q) => el.querySelector(q); const stage = $('#phStage'); const zoom = $('#phZoom');
+        const S = () => stage.clientWidth;
+        const clamp = () => { const s = S(); const w = img.naturalWidth * scale, h = img.naturalHeight * scale; x = Math.min(0, Math.max(s - w, x)); y = Math.min(0, Math.max(s - h, y)); };
+        const paint = () => { if (!img) return; clamp(); const t = stage.querySelector('img.ph-img'); if (t) t.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')'; prev(); };
+        const crop = (size = 360) => { const s = S(); const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.drawImage(img, -x / scale, -y / scale, s / scale, s / scale, 0, 0, size, size); return c.toDataURL('image/jpeg', 0.86); };
+        const prev = u.debounce(() => { if (!img) return; const d = crop(160); $('#phPrev').innerHTML = ['xl', 'lg', '', 'sm'].map((s) => ui.avatar(name, { size: s, photo: d })).join(''); }, 60);
+        const use = async (src) => {
+          stopCam(); img = await loadImg(src);
+          stage.querySelectorAll('img.ph-img,video').forEach((n) => n.remove()); $('#phEmpty').classList.add('hidden');
+          const t = document.createElement('img'); t.className = 'ph-img'; t.src = src; t.alt = ''; stage.prepend(t);
+          const s = S(); minScale = Math.max(s / img.naturalWidth, s / img.naturalHeight); scale = minScale;
+          x = (s - img.naturalWidth * scale) / 2; y = (s - img.naturalHeight * scale) / 2;
+          zoom.min = 1; zoom.max = 5; zoom.value = 1; zoom.disabled = false; stage.classList.add('has'); $('[data-ok]').disabled = false; paint();
+        };
+        const take = async (f) => { if (!f) return; if (!/^image\//.test(f.type)) return ui.toast('Elegí una imagen', { type: 'warn', sub: 'JPG o PNG' }); use(await readFile(f)); };
+        $('#phFile').addEventListener('change', (e) => take(e.target.files[0]));
+        $('#phCap').addEventListener('change', (e) => take(e.target.files[0]));
+        zoom.addEventListener('input', () => { if (!img) return; const s = S(); const cx = (s / 2 - x) / scale, cy = (s / 2 - y) / scale; scale = minScale * +zoom.value; x = s / 2 - cx * scale; y = s / 2 - cy * scale; paint(); });
+        stage.addEventListener('wheel', (e) => { if (!img) return; e.preventDefault(); zoom.value = Math.max(1, Math.min(5, +zoom.value - e.deltaY * 0.002)); zoom.dispatchEvent(new Event('input')); }, { passive: false });
+        let drag = null;
+        stage.addEventListener('pointerdown', (e) => { if (!img) return; drag = { px: e.clientX, py: e.clientY, x, y }; stage.setPointerCapture(e.pointerId); stage.classList.add('drag'); });
+        stage.addEventListener('pointermove', (e) => { if (!drag) return; x = drag.x + e.clientX - drag.px; y = drag.y + e.clientY - drag.py; paint(); });
+        const end = () => { drag = null; stage.classList.remove('drag'); };
+        stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+        // Cámara: en vivo si el navegador lo permite; si no, la cámara del celular
+        const camBtn = $('[data-cam]');
+        camBtn.addEventListener('click', async () => {
+          if (stream) { // capturar
+            const v = stage.querySelector('video'); const c = document.createElement('canvas'); const s = Math.min(v.videoWidth, v.videoHeight); c.width = c.height = s;
+            const g = c.getContext('2d'); g.translate(s, 0); g.scale(-1, 1); g.drawImage(v, (v.videoWidth - s) / 2, (v.videoHeight - s) / 2, s, s, 0, 0, s, s);
+            camBtn.innerHTML = ic('camera') + 'Sacar foto'; use(c.toDataURL('image/jpeg', 0.92)); return;
+          }
+          if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { $('#phCap').click(); return; }
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false });
+            stage.querySelectorAll('img.ph-img,video').forEach((n) => n.remove()); $('#phEmpty').classList.add('hidden');
+            const v = document.createElement('video'); v.autoplay = true; v.playsInline = true; v.muted = true; v.srcObject = stream; stage.prepend(v);
+            camBtn.innerHTML = ic('aperture') + 'Capturar'; camBtn.classList.add('primary');
+          } catch (er) { $('#phCapLbl').classList.remove('hidden'); ui.toast('No se pudo abrir la cámara', { type: 'warn', sub: 'Revisá el permiso del navegador o subí la foto' }); }
+        });
+        $('[data-ok]').addEventListener('click', () => {
+          if (!img) return; const d = crop(360);
+          if (key) { const ok = BT.photos.set(key, d); if (!ok) return ui.toast('No hay espacio para guardar la foto', { type: 'warn', sub: 'En la demo las fotos se guardan en el navegador' }); }
+          close(); onSave && onSave(d); ui.toast('Foto guardada', { icon: 'camera', sub: name });
+        });
+        const del = $('[data-del]'); if (del) del.addEventListener('click', () => { if (key) BT.photos.set(key, null); close(); onSave && onSave(null); ui.toast('Foto quitada', { icon: 'trash-2', sub: name }); });
+        if (source) use(source);
+      },
+    });
+    function stopCam() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } }
+  };
+  BT.readFileAsDataURL = readFile;
+  /** Vista previa de un documento adjunto (imagen o PDF) */
+  BT.docPreview = function ({ title, sub, dataUrl, type, onUsePhoto }) {
+    const isImg = dataUrl && (/^image\//.test(type || '') || /^data:image\//.test(dataUrl));
+    ui.modal({ title, sub, icon: 'file-text', size: 'lg',
+      body: dataUrl ? (isImg ? '<div style="display:grid;place-items:center;background:var(--surface-2);border-radius:12px;padding:12px;max-height:64vh;overflow:auto"><img src="' + dataUrl + '" alt="' + esc(title) + '" style="max-width:100%;height:auto;border-radius:8px;box-shadow:var(--sh-2)"></div>' : '<iframe data-pdf title="' + esc(title) + '" style="width:100%;height:64vh;border:0;border-radius:12px;background:#fff"></iframe>')
+        : '<div style="aspect-ratio:1/1.3;max-height:60vh;margin:auto;border-radius:12px;background:linear-gradient(180deg,#fff,#f8f7f4);border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-400)"><div style="text-align:center">' + ic('file-text', 'ic-xl') + '<div class="mt-8">Vista previa del documento escaneado</div><div class="subtle" style="font-size:var(--fs-xs)">(archivo de demostración)</div></div></div>',
+      foot: '<button class="btn ghost" data-close>Cerrar</button>' + (dataUrl ? '<button class="btn" data-dl>' + ic('download') + 'Descargar</button>' : '') + (isImg && onUsePhoto ? '<button class="btn primary" data-use>' + ic('scan-face') + 'Usar como foto de perfil</button>' : ''),
+      onMount: async (el, close) => {
+        const fr = el.querySelector('[data-pdf]'); if (fr) { try { fr.src = URL.createObjectURL(await (await fetch(dataUrl)).blob()); } catch (e) { fr.src = dataUrl; } }
+        const dl = el.querySelector('[data-dl]'); if (dl) dl.addEventListener('click', async () => BT.download(await (await fetch(dataUrl)).blob(), title + (isImg ? '.jpg' : '.pdf')));
+        const us = el.querySelector('[data-use]'); if (us) us.addEventListener('click', () => { close(); setTimeout(() => onUsePhoto(dataUrl), 260); });
+      } });
+  };
+  /* Clic en cualquier avatar editable abre el editor */
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.av-edit[data-photo]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const key = b.dataset.photo; const name = b.dataset.name;
+    BT.photoEditor({ title: BT.photos.get(key) ? 'Cambiar foto' : 'Agregar foto', name, key, onSave: () => {
+      BT.audit('Actualizó foto', key.startsWith('res:') ? 'Ficha del residente' : 'Legajo de personal', { residentId: key.startsWith('res:') ? key.slice(4) : undefined, detail: name });
+      document.querySelectorAll('.av-edit[data-photo="' + key + '"]').forEach((n) => { n.outerHTML = ui.avatarEdit(name, key, n.querySelector('.avatar.lg') ? 'lg' : 'xl'); });
+      if (BT.refresh) BT.refresh();
+    } });
+  }, true);
 })();
 
 ;
@@ -2361,7 +2526,7 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
 (function () {
   'use strict';
   const BT = window.BT; const u = BT.u;
-  BT.DATA_VERSION = 17;
+  BT.DATA_VERSION = 18;
 
   /* RNG determinístico (los mismos datos en cada restablecimiento) */
   function rngFactory(seed) { let a = seed >>> 0; return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -2828,12 +2993,12 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
 
     /* ---------------- Insumos, proveedores y consumo ---------------- */
     db.suppliers = [
-      { id: 'pv1', nombre: 'Distribuidora Andina Insumos Médicos', rubro: 'Material de enfermería', contacto: 'Germán Olivieri', tel: '2900 4471', email: 'ventas@andinainsumos.com.uy', rut: '21 488 301 0011', plazo: '30 días' },
-      { id: 'pv2', nombre: 'Pañalera del Este', rubro: 'Pañales e higiene', contacto: 'Lorena Bica', tel: '2601 8820', email: 'pedidos@panaleradeleste.com.uy', rut: '21 667 120 0018', plazo: '15 días' },
-      { id: 'pv3', nombre: 'Almacén Mayorista La Cumbre', rubro: 'Alimentos secos', contacto: 'Raúl Ifrán', tel: '2208 3315', email: 'mayorista@lacumbre.com.uy', rut: '21 300 551 0014', plazo: '15 días' },
-      { id: 'pv4', nombre: 'Frutas y Verduras Don Ernesto', rubro: 'Frescos', contacto: 'Ernesto Viñas', tel: '099 455 210', email: 'donernesto.frescos@correo.com.uy', rut: '21 721 004 0019', plazo: 'Contado' },
-      { id: 'pv5', nombre: 'Química Limpia Uruguay', rubro: 'Limpieza', contacto: 'Valentina Sanz', tel: '2309 1188', email: 'comercial@quimicalimpia.com.uy', rut: '21 554 870 0013', plazo: '30 días' },
-      { id: 'pv6', nombre: 'Farmacia Central Unión', rubro: 'Medicamentos', contacto: 'Q.F. Sergio Abella', tel: '2506 2299', email: 'institucional@farmaciaunion.com.uy', rut: '21 116 902 0012', plazo: '30 días' },
+      { id: 'pv1', whatsapp: '094 318 220', nombre: 'Distribuidora Andina Insumos Médicos', rubro: 'Material de enfermería', contacto: 'Germán Olivieri', tel: '2900 4471', email: 'ventas@andinainsumos.com.uy', rut: '21 488 301 0011', plazo: '30 días' },
+      { id: 'pv2', whatsapp: '098 601 882', nombre: 'Pañalera del Este', rubro: 'Pañales e higiene', contacto: 'Lorena Bica', tel: '2601 8820', email: 'pedidos@panaleradeleste.com.uy', rut: '21 667 120 0018', plazo: '15 días' },
+      { id: 'pv3', whatsapp: '091 208 331', nombre: 'Almacén Mayorista La Cumbre', rubro: 'Alimentos secos', contacto: 'Raúl Ifrán', tel: '2208 3315', email: 'mayorista@lacumbre.com.uy', rut: '21 300 551 0014', plazo: '15 días' },
+      { id: 'pv4', whatsapp: '099 455 210', nombre: 'Frutas y Verduras Don Ernesto', rubro: 'Frescos', contacto: 'Ernesto Viñas', tel: '099 455 210', email: 'donernesto.frescos@correo.com.uy', rut: '21 721 004 0019', plazo: 'Contado' },
+      { id: 'pv5', whatsapp: '095 309 118', nombre: 'Química Limpia Uruguay', rubro: 'Limpieza', contacto: 'Valentina Sanz', tel: '2309 1188', email: 'comercial@quimicalimpia.com.uy', rut: '21 554 870 0013', plazo: '30 días' },
+      { id: 'pv6', whatsapp: '092 506 229', nombre: 'Farmacia Central Unión', rubro: 'Medicamentos', contacto: 'Q.F. Sergio Abella', tel: '2506 2299', email: 'institucional@farmaciaunion.com.uy', rut: '21 116 902 0012', plazo: '30 días' },
     ];
     const ITEMS = [
       ['Pañales', 'Pañal adulto talle M', 'unidad', 'pv2', 26, true], ['Pañales', 'Pañal adulto talle G', 'unidad', 'pv2', 29, true], ['Pañales', 'Apósito urológico', 'unidad', 'pv2', 14, true], ['Pañales', 'Toallas húmedas x80', 'paquete', 'pv2', 120, false],
@@ -3896,7 +4061,7 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
     const canClin = clinical();
     BT.audit(canClin ? 'Abrió' : 'Abrió (datos administrativos)', 'Ficha del residente', { residentId: id });
     const g = BT.depGrade(BT.lastBarthel(r));
-    const head = '<div class="profile-hero">' + ui.avatar(BT.fullName(r), { size: 'xl' }) + '<div class="grow" style="min-width:0"><div class="row gap-6 wrap mb-8">' + BT.sedeTag(r.sede) + (canClin ? ui.badge('Dependencia ' + g.label.toLowerCase(), g.tone, { dot: true }) : '') + (r.alergias.length ? r.alergias.map((a) => '<span class="allergy">' + ic('triangle-alert', 'ic-xs') + 'Alergia: ' + esc(a) + '</span>').join('') : '') + '</div>' +
+    const head = '<div class="profile-hero">' + (!BT.isRole('familiar') ? ui.avatarEdit(BT.fullName(r), BT.photoKey.resident(r)) : ui.avatar(BT.fullName(r), { size: 'xl' })) + '<div class="grow" style="min-width:0"><div class="row gap-6 wrap mb-8">' + BT.sedeTag(r.sede) + (canClin ? ui.badge('Dependencia ' + g.label.toLowerCase(), g.tone, { dot: true }) : '') + (r.alergias.length ? r.alergias.map((a) => '<span class="allergy">' + ic('triangle-alert', 'ic-xs') + 'Alergia: ' + esc(a) + '</span>').join('') : '') + '</div>' +
       '<h2>' + esc(BT.fullName(r)) + '</h2><div class="muted" style="font-size:var(--fs-md)">' + u.age(r.nacimiento) + ' años · ' + room(r) + ' · Ingresó el ' + u.fmtDate(r.ingreso) + ' (' + u.rel(u.toDate(r.ingreso)) + ')</div></div>' +
       '<div class="row gap-6">' + ui.exportMenu([{ id: 'ficha', label: 'Ficha del residente', sub: 'PDF A4 · Ord. 483/017', icon: 'file-text' }].concat(canClin ? [{ id: 'barthel', label: 'Evolución del Barthel', sub: 'PDF con gráfico', icon: 'chart-line' }] : []), 'Exportar') +
       (canClin && BT.visibleTabs().some((t) => t.id === 'historia') ? '<button class="btn primary sm" data-act="hc">' + ic('clipboard-list') + 'Historia clínica</button>' : '') + '</div></div>';
@@ -3966,11 +4131,30 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
     if (tab === 'docs') {
       const ft = (t) => (/Cédula|vacunas/.test(t) ? 'img' : /Contrato|Ficha/.test(t) ? 'doc' : '');
       panel.innerHTML = '<div class="col gap-6 stagger">' + r.docs.map((d, i) => '<div class="file doc-row"><div class="row"><span class="fi ' + ft(d.tipo) + '">' + (ft(d.tipo) === 'img' ? 'JPG' : 'PDF') + '</span><div><div class="strong" style="font-size:var(--fs-md)">' + esc(d.tipo) + '</div><div class="muted" style="font-size:var(--fs-xs)">' + (d.estado === 'ok' ? 'Cargado el ' + u.fmtDate(d.fecha) + (d.vence ? ' · vence ' + u.fmtDate(d.vence) : '') : d.estado === 'vencido' ? 'Vencido el ' + u.fmtDate(d.vence) : 'No se adjuntó todavía') + '</div></div></div>' +
-        '<div class="row gap-6">' + (d.estado === 'ok' ? ui.badge('Al día', 'ok', { icon: 'check' }) + '<button class="icon-btn ghost sm" data-tip="Ver documento" data-act="view" data-i="' + i + '">' + ic('eye', 'ic-sm') + '</button>' : ui.badge(d.estado === 'falta' ? 'Falta' : 'Vencido', 'danger') + '<button class="btn soft sm" data-act="up" data-i="' + i + '">' + ic('upload') + 'Adjuntar</button>') + '</div></div>').join('') + '</div>';
+        '<div class="row gap-6">' + (d.estado === 'ok' ? ui.badge('Al día', 'ok', { icon: 'check' }) + (d.file ? '<span class="subtle" style="font-size:var(--fs-xs)">' + ic(/^image/.test(d.file.type) ? 'image' : 'file-text', 'ic-xs') + ' adjunto</span>' : '') + '<button class="icon-btn ghost sm" data-tip="Ver documento" data-act="view" data-i="' + i + '">' + ic('eye', 'ic-sm') + '</button><button class="icon-btn ghost sm" data-tip="Reemplazar archivo" data-act="up" data-i="' + i + '">' + ic('upload', 'ic-sm') + '</button>' : ui.badge(d.estado === 'falta' ? 'Falta' : 'Vencido', 'danger') + '<button class="btn soft sm" data-act="up" data-i="' + i + '">' + ic('upload') + 'Adjuntar</button>') + '</div></div>').join('') + '</div>';
       ui.on(panel, {
-        up: (t) => { const doc = r.docs[+t.dataset.i]; const btn = t; btn.innerHTML = '<span class="skel" style="width:60px;height:10px;display:inline-block"></span>'; setTimeout(() => { doc.estado = 'ok'; doc.fecha = u.todayIso(); if (doc.tipo === 'Carné de vacunas') doc.vence = u.iso(u.addDays(u.today(), 365)); BT.save(); BT.audit('Adjuntó documento', doc.tipo, { residentId: r.id }); ui.toast('Documento adjuntado', { sub: doc.tipo + ' · ' + BT.shortName(r) }); renderFichaTab(panel, 'docs', r, drawer); BT.shell.updateNav(); }, 700); },
-        view: (t) => { const doc = r.docs[+t.dataset.i]; ui.modal({ title: doc.tipo, sub: BT.fullName(r) + ' · cargado el ' + u.fmtDate(doc.fecha), icon: 'file-text', size: 'lg', body: '<div style="aspect-ratio:1/1.3;max-height:60vh;margin:auto;border-radius:12px;background:linear-gradient(180deg,#fff,#f8f7f4);border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-400)"><div style="text-align:center">' + ic('file-text', 'ic-xl') + '<div class="mt-8">Vista previa del documento escaneado</div><div class="subtle" style="font-size:var(--fs-xs)">(archivo de demostración)</div></div></div>' }); BT.audit('Leyó', 'Documento: ' + doc.tipo, { residentId: r.id }); },
+        up: (t) => {
+          const doc = r.docs[+t.dataset.i]; const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,application/pdf';
+          inp.addEventListener('change', async () => {
+            const f = inp.files[0]; if (!f) return;
+            const key = 'resdoc:' + r.id + ':' + doc.tipo; const d = await BT.readFileAsDataURL(f);
+            if (!BT.files.put(key, d)) return ui.toast('No hay espacio para guardar el archivo', { type: 'warn', sub: 'En la demo los archivos se guardan en el navegador' });
+            doc.estado = 'ok'; doc.fecha = u.todayIso(); doc.file = { name: f.name, type: f.type, size: f.size };
+            if (doc.tipo === 'Carné de vacunas') doc.vence = u.iso(u.addDays(u.today(), 365));
+            BT.save(); BT.audit('Adjuntó documento', doc.tipo, { residentId: r.id });
+            ui.toast('Documento adjuntado', { sub: doc.tipo + ' · ' + BT.shortName(r), icon: 'paperclip' });
+            renderFichaTab(panel, 'docs', r, drawer); BT.shell.updateNav();
+            if (/Cédula/.test(doc.tipo) && /^image\//.test(f.type) && !BT.photos.get(BT.photoKey.resident(r))) setTimeout(() => viewDoc(doc), 300);
+          });
+          inp.click();
+        },
+        view: (t) => viewDoc(r.docs[+t.dataset.i]),
       });
+      function viewDoc(doc) {
+        BT.audit('Leyó', 'Documento: ' + doc.tipo, { residentId: r.id });
+        BT.docPreview({ title: doc.tipo, sub: BT.fullName(r) + ' · cargado el ' + u.fmtDate(doc.fecha), dataUrl: BT.files.get('resdoc:' + r.id + ':' + doc.tipo), type: doc.file && doc.file.type,
+          onUsePhoto: /Cédula/.test(doc.tipo) && !BT.isRole('familiar') ? (src) => BT.photoEditor({ title: 'Foto de perfil desde la cédula', name: BT.fullName(r), key: BT.photoKey.resident(r), source: src, onSave: () => { BT.audit('Actualizó foto', 'Ficha del residente', { residentId: r.id }); drawer.querySelectorAll('.av-edit').forEach((n) => { n.outerHTML = ui.avatarEdit(BT.fullName(r), BT.photoKey.resident(r)); }); BT.refresh(); } }) : null });
+      }
     }
   }
 
@@ -6237,10 +6421,11 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
     const next = []; for (let k = 0; k < 7; k++) { const d = u.iso(u.addDays(u.today(), k)); let a = null; SEDES.forEach((ss) => TURNOS.forEach((tt) => { if (slotIds(d, ss, tt).includes(id)) a = { ss, tt }; })); next.push({ d, a, lv: onLeave(id, d), ab: absentOn(id, d) }); }
     BT.audit('Abrió', 'Legajo de personal', { detail: s.nombre, sede: s.sede });
     ui.drawer({
-      head: '<div class="row gap-16">' + ui.avatar(s.nombre, { size: 'lg' }) + '<div><div class="row gap-6"><h3 style="font-size:var(--fs-xl)">' + esc(s.nombre) + '</h3>' + BT.sedeTag(s.sede) + (s.volante ? ui.badge('Volante', 'brand') : '') + '</div><div class="muted" style="font-size:var(--fs-sm)">' + esc(s.rol) + ' · ' + yearsTxt(s.ingreso) + ' de antigüedad</div></div></div>',
+      head: '<div class="row gap-16">' + ui.avatarEdit(s.nombre, BT.photoKey.staff(s), 'xl') + '<div><div class="row gap-6"><h3 style="font-size:var(--fs-xl)">' + esc(s.nombre) + '</h3>' + BT.sedeTag(s.sede) + (s.volante ? ui.badge('Volante', 'brand') : '') + '</div><div class="muted" style="font-size:var(--fs-sm)">' + esc(s.rol) + ' · ' + yearsTxt(s.ingreso) + ' de antigüedad</div></div></div>',
       body: '<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button class="btn sm" data-pdf>' + ic('file-text') + 'Ficha de legajo (PDF)</button></div>' +
         '<div class="kv-cards stagger">' + [['id-card', 'Cédula', u.fmtCI(s.ci)], ['phone', 'Teléfono', esc(s.tel)], ['calendar', 'Ingreso', u.fmtDate(s.ingreso)], ['banknote', 'Salario nominal', u.fmtMoney(s.salario)], ['clock', 'Valor hora', u.fmtMoney(s.valorHora)], ['calendar-x', 'Franco semanal', u.cap(u.DIAS[s.offDow])]].map(([i, k, v]) => '<div class="kv-card"><div class="k">' + ic(i, 'ic-xs') + k + '</div><div class="v num">' + v + '</div></div>').join('') + '</div>' +
         '<div class="sec-t mt-24">Documentación habilitante</div><div class="card"><div class="list">' +
+        '<div class="li"><span class="li-ic ' + (BT.files.get('stfdoc:' + s.id + ':ci') ? 'ok' : '') + '">' + ic('id-card', 'ic-sm') + '</span><div class="grow"><div class="t">Cédula de identidad</div><div class="d" id="ciTxt">' + (s.ciFile ? 'Foto adjunta el ' + u.fmtDate(s.ciFile.fecha) : 'Sin foto adjunta') + '</div></div><div class="row gap-6">' + (s.ciFile ? '<button class="btn xs ghost" data-ci-view>' + ic('eye') + 'Ver</button>' : '') + '<label class="btn xs soft">' + ic('camera') + (s.ciFile ? 'Reemplazar' : 'Adjuntar foto') + '<input type="file" accept="image/*,application/pdf" data-ci hidden></label></div></div>' +
         '<div class="li"><span class="li-ic ' + BT.dueTone(s.carneSalud.vence) + '">' + ic('heart-pulse', 'ic-sm') + '</span><div class="grow"><div class="t">Carné de salud</div><div class="d">Vence el ' + u.fmtDate(s.carneSalud.vence) + ' · ' + u.relDay(s.carneSalud.vence) + '</div></div>' + carneBadge(s) + '</div>' +
         '<div class="li"><span class="li-ic brand">' + ic('graduation-cap', 'ic-sm') + '</span><div class="grow"><div class="t">' + (s.rol === 'Cuidadora' ? 'Curso de cuidados (Sistema Nacional de Cuidados)' : 'Título habilitante') + '</div><div class="d">' + (s.cursoCuidados.fecha ? (s.cursoCuidados.estado === 'En curso' ? 'Finaliza el ' : 'Obtenido el ') + u.fmtDate(s.cursoCuidados.fecha) : 'Sin inscripción registrada') + '</div></div>' + cursoBadge(s) + '</div></div></div>' +
         '<div class="sec-t mt-24">Capacitaciones</div><div class="card"><div class="list">' + (s.capacitaciones.length ? s.capacitaciones.map((c) => '<div class="li"><span class="li-ic">' + ic('award', 'ic-sm') + '</span><div class="grow"><div class="t">' + esc(c.nombre) + '</div><div class="d">' + u.fmtDate(c.fecha) + (c.vence ? ' · vence el ' + u.fmtDate(c.vence) : '') + '</div></div>' + (c.vence ? ui.badge(u.daysUntil(c.vence) < 0 ? 'Vencida' : 'Vigente', u.daysUntil(c.vence) < 0 ? 'danger' : 'ok', { dot: true }) : ui.badge('Sin vencimiento', 'outline')) + '</div>').join('') : '<div class="li"><span class="muted">Sin capacitaciones registradas.</span></div>') + '</div></div>' +
@@ -6249,7 +6434,20 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
         (lv.length ? '<div class="list" style="border-top:1px solid var(--line)">' + lv.map((l) => '<div class="li"><span class="li-ic ok">' + ic('umbrella', 'ic-sm') + '</span><div class="grow"><div class="t">' + esc(l.tipo) + '</div><div class="d">' + u.fmtDate(l.desde) + ' al ' + u.fmtDate(l.hasta) + ' · ' + l.dias + ' días</div></div>' + ui.badge(l.estado, l.estado === 'Aprobada' ? 'ok' : 'warn', { dot: true }) + '</div>').join('') + '</div>' : '') + '</div>' +
         '<div class="sec-t mt-24">Faltas</div><div class="card"><div class="list">' + (ab.length ? ab.map((a) => '<div class="li"><span class="li-ic ' + (a.tipo === 'Injustificada' ? 'danger' : a.tipo === 'Certificado médico' ? 'info' : 'warn') + '">' + ic(a.tipo === 'Certificado médico' ? 'thermometer' : 'calendar-x', 'ic-sm') + '</span><div class="grow"><div class="t">' + esc(a.tipo) + '</div><div class="d">' + u.fmtDate(a.fecha) + ' · ' + turnLabel(a.turno) + ' · ' + esc(a.nota || '') + '</div></div></div>').join('') : '<div class="li"><span class="muted">Sin faltas registradas.</span></div>') + '</div></div>' +
         '<div class="sec-t mt-24">Últimas marcas</div><div class="card">' + ui.table([{ label: 'Fecha', render: (c) => u.fmtDate(c.fecha) }, { label: 'Turno', render: (c) => turnLabel(c.turno) + ' · ' + c.sede }, { label: 'Entrada', align: 'num', render: (c) => c.in }, { label: 'Salida', align: 'num', render: (c) => c.out || ui.live('En turno') }, { label: 'Extra', align: 'num', render: (c) => (c.extraMin ? '+' + c.extraMin + ' min' : '—') }], ck, { compact: true }) + '</div>',
-      onMount: (el) => el.querySelector('[data-pdf]').addEventListener('click', () => staffPdf(s)),
+      onMount: (el, close) => {
+        el.querySelector('[data-pdf]').addEventListener('click', () => staffPdf(s));
+        const key = 'stfdoc:' + s.id + ':ci';
+        const view = () => BT.docPreview({ title: 'Cédula de identidad', sub: s.nombre, dataUrl: BT.files.get(key), type: s.ciFile && s.ciFile.type, onUsePhoto: (src) => BT.photoEditor({ title: 'Foto de perfil desde la cédula', name: s.nombre, key: BT.photoKey.staff(s), source: src, onSave: () => { BT.audit('Actualizó foto', 'Legajo de personal', { detail: s.nombre }); close(); setTimeout(() => openStaff(s.id), 260); BT.refresh(); } }) });
+        const vb = el.querySelector('[data-ci-view]'); if (vb) vb.addEventListener('click', view);
+        el.querySelector('[data-ci]').addEventListener('change', async (e) => {
+          const f = e.target.files[0]; if (!f) return;
+          const d = await BT.readFileAsDataURL(f); if (!BT.files.put(key, d)) return ui.toast('No hay espacio para guardar el archivo', { type: 'warn' });
+          s.ciFile = { name: f.name, type: f.type, size: f.size, fecha: u.todayIso() }; BT.save();
+          BT.audit('Adjuntó documento', 'Cédula de identidad', { detail: s.nombre, sede: s.sede });
+          ui.toast('Cédula adjuntada', { icon: 'id-card', sub: s.nombre });
+          close(); setTimeout(() => { openStaff(s.id); if (/^image\//.test(f.type) && !BT.photos.get(BT.photoKey.staff(s))) setTimeout(view, 350); }, 260);
+        });
+      },
     });
   }
   BT.actions.openStaff = openStaff;
@@ -8907,7 +9105,7 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
       eyebrow: 'Insumos y compras', icon: 'boxes', title: 'Stock, consumo y proveedores',
       sub: BT.sedeName() + ' · ' + items.length + ' artículos controlados',
       actions: ui.exportMenu([{ id: 'xls', label: 'Stock en Excel', sub: 'Con mínimos, valorización y proveedor', icon: 'file-spreadsheet' }, { id: 'xlsc', label: 'Consumo por residente (Excel)', sub: 'Mes en curso', icon: 'file-spreadsheet' }]) +
-        '<button class="btn primary" data-act="order" ' + (low.length ? '' : 'disabled') + '>' + ic('shopping-cart') + 'Generar orden' + (low.length ? ' (' + low.length + ')' : '') + '</button>',
+        '<button class="btn primary" data-act="order">' + ic('shopping-cart') + 'Nueva compra' + (low.length ? ' <span class="badge" style="height:18px;padding:0 6px;background:rgba(255,255,255,.22);color:#fff">' + low.length + ' bajos</span>' : '') + '</button>',
     }) +
       '<div class="grid g-4 stagger mb-16">' +
       ui.kpi({ label: 'Bajo el mínimo', value: low.length, icon: 'triangle-alert', tone: low.length ? 'danger' : 'ink', foot: low.length ? 'Reponer cuanto antes' : 'Todo en orden' }) +
@@ -8943,12 +9141,12 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
         { label: 'Costo', align: 'num', render: (s) => u.fmtMoney(s.costo) },
         { label: 'Valor', align: 'num', render: (s) => u.fmtMoney(s.stock * s.costo) },
         { label: 'Estado', render: (s) => (s.stock < s.minimo * 0.5 ? ui.badge('Crítico', 'danger', { dot: true }) : s.stock < s.minimo ? ui.badge('Bajo mínimo', 'warn', { dot: true }) : ui.badge('OK', 'ok', { dot: true })) },
-        { label: '', align: 'num', render: (s) => '<div class="row gap-4" style="justify-content:flex-end"><button class="btn xs" data-act="in" data-id="' + s.id + '" data-tip="Registrar ingreso">' + ic('package-plus') + 'Ingreso</button><button class="btn xs ghost" data-act="adj" data-id="' + s.id + '" data-tip="Ajustar por inventario">' + ic('sliders-horizontal') + '</button></div>' },
+        { label: '', align: 'num', render: (s) => '<div class="row gap-4" style="justify-content:flex-end"><button class="btn xs" data-act="in" data-id="' + s.id + '" data-tip="Registrar ingreso">' + ic('package-plus') + 'Ingreso</button><button class="btn xs ghost" data-act="buy" data-id="' + s.id + '" data-tip="Comprar este artículo">' + ic('shopping-cart') + '</button><button class="btn xs ghost" data-act="adj" data-id="' + s.id + '" data-tip="Ajustar por inventario">' + ic('sliders-horizontal') + '</button></div>' },
       ], items, { rowAttrs: (s) => (s.stock < s.minimo * 0.5 ? 'class="row-flag-danger"' : s.stock < s.minimo ? 'class="row-flag-warn"' : ''), empty: { ill: 'search', title: 'Sin artículos', text: 'No hay artículos que coincidan con el filtro.' } }) + '</div></section>';
     p.querySelector('.seg[data-seg="inscat"]').addEventListener('segchange', (e) => { BT.state.sub.insCat = e.detail.value; renderStock(p); ui.enhance(p); });
     const qi = p.querySelector('#insQ');
     qi.addEventListener('input', u.debounce(() => { BT.state.sub.insQ = qi.value; const pos = qi.selectionStart; renderStock(p); ui.enhance(p); const n = p.querySelector('#insQ'); n.focus(); n.setSelectionRange(pos, pos); }, 220));
-    ui.on(p, { in: (t) => moveFlow(t.dataset.id, 'in'), adj: (t) => moveFlow(t.dataset.id, 'adj') });
+    ui.on(p, { in: (t) => moveFlow(t.dataset.id, 'in'), adj: (t) => moveFlow(t.dataset.id, 'adj'), buy: (t) => orderFlow(t.dataset.id) });
   }
   function moveFlow(id, mode) {
     const s = BT.db.stock.find((x) => x.id === id); if (!s) return;
@@ -9051,7 +9249,7 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
   /* ---------------- Órdenes de compra ---------------- */
   function renderOrders(p) {
     const list = BT.bySede(BT.db.purchases).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
-    p.innerHTML = '<section class="card"><div class="card-h"><div><h3>' + ic('shopping-cart') + 'Órdenes de compra</h3><div class="sub">Últimas compras y entregas pendientes</div></div><button class="btn sm primary" data-act="order" ' + (lowItems().length ? '' : 'disabled') + '>' + ic('wand-sparkles') + 'Generar desde stock bajo</button></div><div class="card-b flush">' +
+    p.innerHTML = '<section class="card"><div class="card-h"><div><h3>' + ic('shopping-cart') + 'Órdenes de compra</h3><div class="sub">Últimas compras y entregas pendientes</div></div><button class="btn sm primary" data-act="order">' + ic('shopping-cart') + 'Nueva compra</button></div><div class="card-b flush">' +
       ui.table([
         { label: 'Nº', render: (o) => '<span class="num strong">OC-' + String(o.id).replace(/\D/g, '').padStart(4, '0').slice(-4) + '</span>' },
         { label: 'Fecha', align: 'num', render: (o) => u.fmtDate(o.fecha) },
@@ -9060,10 +9258,11 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
         { label: 'Detalle', render: (o) => '<span class="muted" style="font-size:var(--fs-sm)">' + esc(o.items) + '</span>' },
         { label: 'Total', align: 'num', render: (o) => '<span class="strong">' + u.fmtMoney(o.total) + '</span>' },
         { label: 'Estado', render: (o) => (o.estado === 'Recibida' ? ui.badge('Recibida', 'ok', { icon: 'check' }) : ui.badge(o.estado, 'warn', { dot: true })) },
-        { label: '', align: 'num', render: (o) => (o.estado !== 'Recibida' ? '<button class="btn xs" data-act="recv" data-id="' + o.id + '">' + ic('package-check') + 'Recibir</button>' : '') },
-      ], list, { empty: { ill: 'default', title: 'Sin órdenes', text: 'Generá una orden desde los artículos bajo el mínimo.' } }) + '</div></section>';
+        { label: '', align: 'num', render: (o) => '<div class="row gap-4" style="justify-content:flex-end">' + (o.estado !== 'Recibida' ? '<button class="btn xs ghost" data-act="wa" data-id="' + o.id + '" data-tip="' + (o.waEnviado ? 'Enviado por WhatsApp · reenviar' : 'Enviar pedido por WhatsApp') + '" style="color:#128c4a">' + ic(o.waEnviado ? 'check-check' : 'message-circle') + '</button><button class="btn xs" data-act="recv" data-id="' + o.id + '">' + ic('package-check') + 'Recibir</button>' : '') + '</div>' },
+      ], list, { empty: { ill: 'default', title: 'Sin órdenes', text: 'Creá una compra con el botón «Nueva compra».' } }) + '</div></section>';
     ui.on(p, {
       order: () => orderFlow(),
+      wa: (t) => waOrder(BT.db.purchases.find((x) => x.id === t.dataset.id), () => BT.refresh()),
       recv: (t) => {
         const o = BT.db.purchases.find((x) => x.id === t.dataset.id);
         o.estado = 'Recibida';
@@ -9075,35 +9274,108 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
       },
     });
   }
-  function orderFlow() {
-    const low = lowItems(); if (!low.length) return;
-    const bySup = u.groupBy(low, (s) => s.proveedorId + '|' + s.sede);
-    const sug = (s) => Math.max(1, Math.ceil(s.minimo * 2 - s.stock));
+  /* En la demo los números de los proveedores son ficticios: WhatsApp se abre con el mensaje listo y se elige el contacto. */
+  const DEMO_WA = true;
+  const ocNum = (o) => 'OC-' + String(o.id).replace(/\D/g, '').padStart(4, '0').slice(-4);
+  const waDigits = (tel) => { const d = String(tel || '').replace(/\D/g, ''); return d ? (d.startsWith('598') ? d : '598' + d.replace(/^0/, '')) : ''; };
+  const orderText = (o) => {
+    const sp = supplier(o.proveedorId); const sObj = BT.db.sedes.find((x) => x.id === o.sede);
+    const lines = (o.lines || []).map((l) => { const it = BT.db.stock.find((s) => s.id === l.itemId); return '• ' + (it ? it.item : 'Artículo') + ' × ' + u.fmtNum(l.qty) + (it ? ' ' + it.unidad + (l.qty > 1 && it.unidad === 'unidad' ? 'es' : l.qty > 1 ? 's' : '') : ''); });
+    return 'Hola ' + (sp.contacto || '').replace(/^(Q\.F\.|Dr\.|Dra\.|Lic\.)\s*/, '').split(' ')[0] + ', te escribimos de *Residencial Buenos Tiempos* 🌿\n' +
+      'Les hacemos el siguiente pedido (*' + ocNum(o) + '*):\n\n' + (lines.length ? lines.join('\n') : o.items) + '\n\n' +
+      'Total estimado: ' + u.fmtMoney(o.total) + '\nEntregar en: ' + (sObj ? sObj.nombre + ' · ' + sObj.direccion + ', ' + sObj.barrio : '') + '\nPago a ' + (sp.plazo || 'convenir') + '. ¡Gracias!';
+  };
+  /** Enviar una orden al proveedor por WhatsApp (vista previa + abre WhatsApp con el mensaje listo) */
+  function waOrder(o, after) {
+    const sp = supplier(o.proveedorId); const num = waDigits(sp.whatsapp || sp.tel);
+    const fmt = (t) => esc(t).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
     ui.modal({
-      title: 'Generar órdenes de compra', sub: low.length + ' artículos bajo el mínimo · cantidades sugeridas para llegar al doble del mínimo', icon: 'shopping-cart', size: 'lg',
-      body: Object.entries(bySup).map(([k, arr]) => {
-        const [pid, sede] = k.split('|'); const sp = supplier(pid);
-        return '<div class="card mb-16" style="box-shadow:none"><div class="card-h"><div><h3 style="font-size:var(--fs-md)">' + ic('truck') + esc(sp.nombre) + ' ' + BT.sedeTag(sede) + '</h3><div class="sub">' + esc(sp.contacto || '') + ' · ' + esc(sp.tel || '') + ' · Pago a ' + esc(sp.plazo || '—') + '</div></div></div><div class="card-b" style="padding-top:10px">' +
-          arr.map((s) => '<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--ink-100)"><div class="grow"><div class="strong" style="font-size:var(--fs-md)">' + esc(s.item) + '</div><div class="muted" style="font-size:var(--fs-xs)">Stock ' + u.fmtNum(s.stock) + ' · mínimo ' + u.fmtNum(s.minimo) + ' · ' + u.fmtMoney(s.costo) + ' c/u</div></div><input class="input ins-qty num" type="number" min="0" data-item="' + s.id + '" value="' + sug(s) + '"><span class="muted" style="width:62px;font-size:var(--fs-xs)">' + esc(s.unidad) + '</span></div>').join('') +
-          '</div></div>';
-      }).join('') + '<div class="row between"><span class="muted">Total estimado</span><span class="strong num" id="ocTot" style="font-size:var(--fs-xl)"></span></div>',
+      title: 'Enviar pedido por WhatsApp', icon: 'message-circle', size: 'lg', sub: ocNum(o) + ' · ' + sp.nombre + (DEMO_WA ? ' · en la demo elegís el contacto en WhatsApp' : ''),
+      body: '<div class="grid g-2" style="align-items:start"><div class="col gap-12"><div class="field"><label>Para</label><div class="row gap-8">' + ui.avatar(sp.nombre, { size: 'sm' }) + '<div><div class="strong">' + esc(sp.contacto || sp.nombre) + '</div><div class="muted" style="font-size:var(--fs-xs)">' + esc(sp.nombre) + ' · WhatsApp ' + esc(sp.whatsapp || sp.tel || '—') + '</div></div></div></div>' +
+        ui.field({ label: 'Mensaje', name: 'msg', type: 'textarea', value: orderText(o), attrs: 'rows="11"' }) + '</div>' +
+        '<div><div class="flabel" style="margin-bottom:6px">Vista previa</div><div class="wa"><div class="wa-top">' + ui.avatar(sp.nombre, { size: 'sm' }) + '<div><div style="font-weight:600;font-size:var(--fs-md)">' + esc(sp.contacto || sp.nombre) + '</div><div style="font-size:11px;opacity:.75">' + esc(sp.nombre) + '</div></div></div><div class="wa-b" id="waOB" style="white-space:pre-wrap">' + fmt(orderText(o)) + '<div class="wa-meta">' + u.fmtTime(new Date()) + ' ' + ic('check-check', 'ic-xs') + '</div></div></div></div></div>',
+      foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn" data-copy>' + ic('copy') + 'Copiar texto</button><button class="btn primary" data-wa style="background:linear-gradient(180deg,#25d366,#1da851);border-color:#179443">' + ic('message-circle') + 'Abrir WhatsApp</button>',
+      onMount: (el, close) => {
+        const ta = el.querySelector('[name=msg]');
+        ta.addEventListener('input', () => { el.querySelector('#waOB').innerHTML = fmt(ta.value) + '<div class="wa-meta">' + u.fmtTime(new Date()) + ' ' + ic('check-check', 'ic-xs') + '</div>'; });
+        el.querySelector('[data-copy]').addEventListener('click', async () => { try { await navigator.clipboard.writeText(ta.value); ui.toast('Texto copiado', { icon: 'copy' }); } catch (e) { ta.select(); } });
+        el.querySelector('[data-wa]').addEventListener('click', () => {
+          window.open('https://wa.me/' + (DEMO_WA ? '' : num) + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener');
+          o.waEnviado = Date.now(); BT.audit('Envió pedido por WhatsApp', 'Órdenes de compra', { sede: o.sede, detail: ocNum(o) + ' a ' + sp.nombre });
+          BT.save(); close(); ui.toast('Pedido listo en WhatsApp', { icon: 'message-circle', sub: sp.nombre + ' · ' + ocNum(o) }); after && after();
+        });
+      },
+    });
+  }
+
+  /**
+   * Nueva compra: se puede comprar cualquier artículo, haya o no stock bajo.
+   * Los artículos bajo el mínimo vienen sugeridos; el resto se agrega con cantidad.
+   */
+  function orderFlow(onlyId) {
+    const all = BT.bySede(BT.db.stock); const low = lowItems();
+    const sug = (s) => Math.max(1, Math.ceil(s.minimo * 2 - s.stock));
+    const qty = {}; // itemId → cantidad
+    if (onlyId) { const s = all.find((x) => x.id === onlyId); if (s) qty[s.id] = s.stock < s.minimo ? sug(s) : Math.max(1, Math.ceil(s.minimo)); }
+    else low.forEach((s) => { qty[s.id] = sug(s); });
+    let show = onlyId || !low.length ? 'todos' : 'bajos'; let q = '';
+    ui.modal({
+      title: 'Nueva compra', icon: 'shopping-cart', size: 'lg',
+      sub: low.length ? low.length + ' artículos bajo el mínimo ya vienen sugeridos · podés sumar cualquier otro' : 'Elegí los artículos y las cantidades a comprar',
+      body: '<div class="row between wrap gap-8 mb-12">' + ui.seg('ocShow', [{ id: 'bajos', label: 'Bajo el mínimo (' + low.length + ')' }, { id: 'todos', label: 'Todos los artículos (' + all.length + ')' }], show, 'sm') +
+        '<div style="position:relative;width:min(240px,100%)"><span style="position:absolute;left:12px;top:8px;color:var(--ink-400)">' + ic('search', 'ic-sm') + '</span><input class="input" id="ocQ" placeholder="Buscar artículo…" style="height:34px;min-height:34px;padding-left:34px;border-radius:99px"></div></div>' +
+        '<div id="ocList" style="max-height:52vh;overflow:auto;margin:0 -4px;padding:0 4px"></div>' +
+        '<div class="row between mt-16"><span class="muted" id="ocCount"></span><span class="strong num" id="ocTot" style="font-size:var(--fs-xl)"></span></div>' +
+        '<label class="row mt-12" style="gap:10px;font-size:var(--fs-md)"><span class="switch"><input type="checkbox" id="ocWa" checked><span></span></span>Enviar el pedido a cada proveedor por WhatsApp</label>',
       foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-save>' + ic('send') + 'Emitir órdenes</button>',
       onMount: (m, close) => {
-        const tot = () => { const t = u.sum([...m.querySelectorAll('[data-item]')], (i) => (+i.value || 0) * BT.db.stock.find((s) => s.id === i.dataset.item).costo); m.querySelector('#ocTot').textContent = u.fmtMoney(t); return t; };
-        tot(); m.querySelectorAll('[data-item]').forEach((i) => i.addEventListener('input', tot));
+        const list = m.querySelector('#ocList');
+        const draw = () => {
+          let items = show === 'bajos' ? all.filter((s) => s.stock < s.minimo || qty[s.id] > 0) : all;
+          if (q) items = items.filter((s) => u.norm(s.item + ' ' + supplier(s.proveedorId).nombre).includes(u.norm(q)));
+          const groups = u.groupBy(items, (s) => s.proveedorId + '|' + s.sede);
+          list.innerHTML = Object.keys(groups).length ? Object.entries(groups).map(([k, arr]) => {
+            const [pid, sede] = k.split('|'); const sp = supplier(pid);
+            return '<div class="card mb-12" style="box-shadow:none"><div class="card-h" style="padding:12px 14px"><div><h3 style="font-size:var(--fs-md)">' + ic('truck') + esc(sp.nombre) + ' ' + BT.sedeTag(sede) + '</h3><div class="sub">' + esc(sp.contacto || '') + ' · Pago a ' + esc(sp.plazo || '—') + '</div></div></div><div class="card-b" style="padding:4px 14px 10px">' +
+              arr.map((s) => '<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--ink-100);gap:10px"><div class="grow" style="min-width:0"><div class="strong ellipsis" style="font-size:var(--fs-md)">' + esc(s.item) + ' ' + (s.stock < s.minimo ? ui.badge('Bajo mínimo', s.stock < s.minimo * 0.5 ? 'danger' : 'warn', { dot: true }) : '') + '</div><div class="muted" style="font-size:var(--fs-xs)">Stock ' + u.fmtNum(s.stock) + ' · mínimo ' + u.fmtNum(s.minimo) + ' · ' + u.fmtMoney(s.costo) + ' c/u</div></div>' +
+                '<input class="input ins-qty num" type="number" min="0" data-item="' + s.id + '" value="' + (qty[s.id] || 0) + '" aria-label="Cantidad de ' + esc(s.item) + '"><span class="muted" style="width:58px;font-size:var(--fs-xs)">' + esc(s.unidad) + '</span></div>').join('') + '</div></div>';
+          }).join('') : ui.empty({ ill: 'search', title: 'Sin artículos', text: show === 'bajos' ? 'No hay artículos bajo el mínimo. Pasá a «Todos los artículos» para comprar igual.' : 'Probá con otra búsqueda.' });
+          tot();
+        };
+        const tot = () => {
+          const ids = Object.keys(qty).filter((k) => qty[k] > 0);
+          const t = u.sum(ids, (k) => qty[k] * (BT.db.stock.find((s) => s.id === k) || { costo: 0 }).costo);
+          m.querySelector('#ocTot').textContent = u.fmtMoney(t);
+          m.querySelector('#ocCount').textContent = ids.length ? ids.length + (ids.length === 1 ? ' artículo' : ' artículos') + ' · ' + new Set(ids.map((k) => { const s = BT.db.stock.find((x) => x.id === k); return s.proveedorId + s.sede; })).size + ' proveedor(es)' : 'Ningún artículo elegido';
+          m.querySelector('[data-save]').disabled = !ids.length; return t;
+        };
+        list.addEventListener('input', (e) => { const i = e.target.closest('[data-item]'); if (!i) return; qty[i.dataset.item] = Math.max(0, +i.value || 0); tot(); });
+        m.querySelector('.seg').addEventListener('segchange', (e) => { show = e.detail.value; draw(); });
+        m.querySelector('#ocQ').addEventListener('input', u.debounce((e) => { q = e.target.value; draw(); }, 150));
+        draw();
         m.querySelector('[data-save]').addEventListener('click', () => {
-          let n = 0;
-          Object.entries(bySup).forEach(([k, arr]) => {
+          const ids = Object.keys(qty).filter((k) => qty[k] > 0); if (!ids.length) return;
+          const groups = u.groupBy(ids.map((k) => BT.db.stock.find((s) => s.id === k)), (s) => s.proveedorId + '|' + s.sede);
+          const created = Object.entries(groups).map(([k, arr]) => {
             const [pid, sede] = k.split('|');
-            const lines = arr.map((s) => ({ itemId: s.id, qty: Math.max(0, +m.querySelector('[data-item="' + s.id + '"]').value || 0) })).filter((l) => l.qty > 0);
-            if (!lines.length) return;
-            const total = u.sum(lines, (l) => l.qty * BT.db.stock.find((s) => s.id === l.itemId).costo);
-            BT.db.purchases.push({ id: u.uid('oc'), proveedorId: pid, sede, fecha: u.todayIso(), items: lines.map((l) => BT.db.stock.find((s) => s.id === l.itemId).item + ' × ' + u.fmtNum(l.qty)).join(', '), total: Math.round(total), estado: 'Pendiente de entrega', lines });
-            n++;
+            const lines = arr.map((s) => ({ itemId: s.id, qty: qty[s.id] }));
+            const o = { id: u.uid('oc'), proveedorId: pid, sede, fecha: u.todayIso(), items: lines.map((l) => BT.db.stock.find((s) => s.id === l.itemId).item + ' × ' + u.fmtNum(l.qty)).join(', '), total: Math.round(u.sum(lines, (l) => l.qty * BT.db.stock.find((s) => s.id === l.itemId).costo)), estado: 'Pendiente de entrega', lines };
+            BT.db.purchases.push(o); return o;
           });
-          BT.audit('Creó', 'Órdenes de compra', { detail: n + ' órdenes por ' + u.fmtMoney(tot()) });
-          BT.save(); close(); BT.state.sub.ins = 'ordenes'; BT.refresh();
-          ui.toast(n + ' orden' + (n === 1 ? '' : 'es') + ' emitida' + (n === 1 ? '' : 's'), { sub: 'Enviadas a los proveedores por correo (simulado)', icon: 'send' });
+          const total = u.sum(created, 'total'); const wa = m.querySelector('#ocWa').checked;
+          BT.audit('Creó', 'Órdenes de compra', { detail: created.length + ' órdenes por ' + u.fmtMoney(total) });
+          BT.save(); BT.state.sub.ins = 'ordenes'; BT.refresh(); BT.shell.updateNav();
+          if (!wa) { close(); ui.toast(created.length + (created.length === 1 ? ' orden emitida' : ' órdenes emitidas'), { sub: u.fmtMoney(total), icon: 'send' }); return; }
+          // Pantalla final: enviar cada orden por WhatsApp
+          const bodyEl = m.querySelector('.modal-b');
+          const paint = () => {
+            bodyEl.innerHTML = '<div class="up-done" style="text-align:center;padding:6px 0 14px"><span class="up-ok" style="width:56px;height:56px;border-radius:50%;display:inline-grid;place-items:center;background:var(--ok);color:#fff">' + BT.check + '</span><h3 class="mt-12" style="font-size:var(--fs-xl)">' + created.length + (created.length === 1 ? ' orden emitida' : ' órdenes emitidas') + ' · ' + u.fmtMoney(total) + '</h3><p class="muted">Mandale el pedido a cada proveedor por WhatsApp</p></div>' +
+              '<div class="list" style="border:1px solid var(--line);border-radius:var(--r-md)">' + created.map((o) => { const sp = supplier(o.proveedorId); return '<div class="li"><span class="li-ic brand">' + ic('truck', 'ic-sm') + '</span><div class="grow"><div class="t">' + esc(sp.nombre) + ' ' + BT.sedeTag(o.sede) + '</div><div class="d">' + ocNum(o) + ' · ' + u.fmtMoney(o.total) + ' · ' + esc(sp.whatsapp || sp.tel || '') + '</div></div>' + (o.waEnviado ? ui.badge('Enviado', 'ok', { icon: 'check-check' }) : '<button class="btn sm" data-wao="' + o.id + '" style="color:#128c4a;border-color:#bfe6cf">' + ic('message-circle') + 'Enviar por WhatsApp</button>') + '</div>'; }).join('') + '</div>';
+            m.querySelector('.modal-f').innerHTML = '<button class="btn primary" data-done>' + ic('check') + 'Listo</button>';
+            m.querySelector('[data-done]').addEventListener('click', () => { close(); BT.refresh(); });
+            bodyEl.querySelectorAll('[data-wao]').forEach((b) => b.addEventListener('click', () => waOrder(created.find((o) => o.id === b.dataset.wao), paint)));
+          };
+          paint();
         });
       },
     });
@@ -9116,7 +9388,7 @@ BT.WYDAN_IC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB1CAYAAACF+iUMA
       const items = BT.bySede(BT.db.stock).filter((i) => i.proveedorId === s.id);
       const low = items.filter((i) => i.stock < i.minimo).length;
       return '<section class="card hover ins-sup"><div class="top">' + ui.avatar(s.nombre, { size: 'lg', sq: true }) + '<div class="grow" style="min-width:0"><div class="strong ellipsis">' + esc(s.nombre) + '</div><div class="muted" style="font-size:var(--fs-sm)">' + esc(s.rubro) + '</div></div>' + (low ? ui.badge(low + ' a reponer', 'warn', { dot: true }) : '') + '</div>' +
-        ui.kv([['Contacto', esc(s.contacto)], ['Teléfono', '<span class="num">' + esc(s.tel) + '</span>'], ['Correo', '<span style="font-size:var(--fs-sm)">' + esc(s.email) + '</span>'], ['RUT', '<span class="num">' + esc(s.rut) + '</span>'], ['Plazo de pago', esc(s.plazo)]]) +
+        ui.kv([['Contacto', esc(s.contacto)], ['Teléfono', '<span class="num">' + esc(s.tel) + '</span>'], ['WhatsApp', s.whatsapp ? '<span class="num" style="color:#128c4a">' + esc(s.whatsapp) + '</span>' : '—'], ['Correo', '<span style="font-size:var(--fs-sm)">' + esc(s.email) + '</span>'], ['RUT', '<span class="num">' + esc(s.rut) + '</span>'], ['Plazo de pago', esc(s.plazo)]]) +
         '<div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span class="muted" style="font-size:var(--fs-sm)">' + ocs.length + ' órdenes · ' + items.length + ' artículos</span><span class="strong num">' + u.fmtMoney(u.sum(ocs, 'total')) + '</span></div></section>';
     }).join('') + '</div>';
   }

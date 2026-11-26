@@ -123,7 +123,7 @@
     const canClin = clinical();
     BT.audit(canClin ? 'Abrió' : 'Abrió (datos administrativos)', 'Ficha del residente', { residentId: id });
     const g = BT.depGrade(BT.lastBarthel(r));
-    const head = '<div class="profile-hero">' + ui.avatar(BT.fullName(r), { size: 'xl' }) + '<div class="grow" style="min-width:0"><div class="row gap-6 wrap mb-8">' + BT.sedeTag(r.sede) + (canClin ? ui.badge('Dependencia ' + g.label.toLowerCase(), g.tone, { dot: true }) : '') + (r.alergias.length ? r.alergias.map((a) => '<span class="allergy">' + ic('triangle-alert', 'ic-xs') + 'Alergia: ' + esc(a) + '</span>').join('') : '') + '</div>' +
+    const head = '<div class="profile-hero">' + (!BT.isRole('familiar') ? ui.avatarEdit(BT.fullName(r), BT.photoKey.resident(r)) : ui.avatar(BT.fullName(r), { size: 'xl' })) + '<div class="grow" style="min-width:0"><div class="row gap-6 wrap mb-8">' + BT.sedeTag(r.sede) + (canClin ? ui.badge('Dependencia ' + g.label.toLowerCase(), g.tone, { dot: true }) : '') + (r.alergias.length ? r.alergias.map((a) => '<span class="allergy">' + ic('triangle-alert', 'ic-xs') + 'Alergia: ' + esc(a) + '</span>').join('') : '') + '</div>' +
       '<h2>' + esc(BT.fullName(r)) + '</h2><div class="muted" style="font-size:var(--fs-md)">' + u.age(r.nacimiento) + ' años · ' + room(r) + ' · Ingresó el ' + u.fmtDate(r.ingreso) + ' (' + u.rel(u.toDate(r.ingreso)) + ')</div></div>' +
       '<div class="row gap-6">' + ui.exportMenu([{ id: 'ficha', label: 'Ficha del residente', sub: 'PDF A4 · Ord. 483/017', icon: 'file-text' }].concat(canClin ? [{ id: 'barthel', label: 'Evolución del Barthel', sub: 'PDF con gráfico', icon: 'chart-line' }] : []), 'Exportar') +
       (canClin && BT.visibleTabs().some((t) => t.id === 'historia') ? '<button class="btn primary sm" data-act="hc">' + ic('clipboard-list') + 'Historia clínica</button>' : '') + '</div></div>';
@@ -193,11 +193,30 @@
     if (tab === 'docs') {
       const ft = (t) => (/Cédula|vacunas/.test(t) ? 'img' : /Contrato|Ficha/.test(t) ? 'doc' : '');
       panel.innerHTML = '<div class="col gap-6 stagger">' + r.docs.map((d, i) => '<div class="file doc-row"><div class="row"><span class="fi ' + ft(d.tipo) + '">' + (ft(d.tipo) === 'img' ? 'JPG' : 'PDF') + '</span><div><div class="strong" style="font-size:var(--fs-md)">' + esc(d.tipo) + '</div><div class="muted" style="font-size:var(--fs-xs)">' + (d.estado === 'ok' ? 'Cargado el ' + u.fmtDate(d.fecha) + (d.vence ? ' · vence ' + u.fmtDate(d.vence) : '') : d.estado === 'vencido' ? 'Vencido el ' + u.fmtDate(d.vence) : 'No se adjuntó todavía') + '</div></div></div>' +
-        '<div class="row gap-6">' + (d.estado === 'ok' ? ui.badge('Al día', 'ok', { icon: 'check' }) + '<button class="icon-btn ghost sm" data-tip="Ver documento" data-act="view" data-i="' + i + '">' + ic('eye', 'ic-sm') + '</button>' : ui.badge(d.estado === 'falta' ? 'Falta' : 'Vencido', 'danger') + '<button class="btn soft sm" data-act="up" data-i="' + i + '">' + ic('upload') + 'Adjuntar</button>') + '</div></div>').join('') + '</div>';
+        '<div class="row gap-6">' + (d.estado === 'ok' ? ui.badge('Al día', 'ok', { icon: 'check' }) + (d.file ? '<span class="subtle" style="font-size:var(--fs-xs)">' + ic(/^image/.test(d.file.type) ? 'image' : 'file-text', 'ic-xs') + ' adjunto</span>' : '') + '<button class="icon-btn ghost sm" data-tip="Ver documento" data-act="view" data-i="' + i + '">' + ic('eye', 'ic-sm') + '</button><button class="icon-btn ghost sm" data-tip="Reemplazar archivo" data-act="up" data-i="' + i + '">' + ic('upload', 'ic-sm') + '</button>' : ui.badge(d.estado === 'falta' ? 'Falta' : 'Vencido', 'danger') + '<button class="btn soft sm" data-act="up" data-i="' + i + '">' + ic('upload') + 'Adjuntar</button>') + '</div></div>').join('') + '</div>';
       ui.on(panel, {
-        up: (t) => { const doc = r.docs[+t.dataset.i]; const btn = t; btn.innerHTML = '<span class="skel" style="width:60px;height:10px;display:inline-block"></span>'; setTimeout(() => { doc.estado = 'ok'; doc.fecha = u.todayIso(); if (doc.tipo === 'Carné de vacunas') doc.vence = u.iso(u.addDays(u.today(), 365)); BT.save(); BT.audit('Adjuntó documento', doc.tipo, { residentId: r.id }); ui.toast('Documento adjuntado', { sub: doc.tipo + ' · ' + BT.shortName(r) }); renderFichaTab(panel, 'docs', r, drawer); BT.shell.updateNav(); }, 700); },
-        view: (t) => { const doc = r.docs[+t.dataset.i]; ui.modal({ title: doc.tipo, sub: BT.fullName(r) + ' · cargado el ' + u.fmtDate(doc.fecha), icon: 'file-text', size: 'lg', body: '<div style="aspect-ratio:1/1.3;max-height:60vh;margin:auto;border-radius:12px;background:linear-gradient(180deg,#fff,#f8f7f4);border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-400)"><div style="text-align:center">' + ic('file-text', 'ic-xl') + '<div class="mt-8">Vista previa del documento escaneado</div><div class="subtle" style="font-size:var(--fs-xs)">(archivo de demostración)</div></div></div>' }); BT.audit('Leyó', 'Documento: ' + doc.tipo, { residentId: r.id }); },
+        up: (t) => {
+          const doc = r.docs[+t.dataset.i]; const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,application/pdf';
+          inp.addEventListener('change', async () => {
+            const f = inp.files[0]; if (!f) return;
+            const key = 'resdoc:' + r.id + ':' + doc.tipo; const d = await BT.readFileAsDataURL(f);
+            if (!BT.files.put(key, d)) return ui.toast('No hay espacio para guardar el archivo', { type: 'warn', sub: 'En la demo los archivos se guardan en el navegador' });
+            doc.estado = 'ok'; doc.fecha = u.todayIso(); doc.file = { name: f.name, type: f.type, size: f.size };
+            if (doc.tipo === 'Carné de vacunas') doc.vence = u.iso(u.addDays(u.today(), 365));
+            BT.save(); BT.audit('Adjuntó documento', doc.tipo, { residentId: r.id });
+            ui.toast('Documento adjuntado', { sub: doc.tipo + ' · ' + BT.shortName(r), icon: 'paperclip' });
+            renderFichaTab(panel, 'docs', r, drawer); BT.shell.updateNav();
+            if (/Cédula/.test(doc.tipo) && /^image\//.test(f.type) && !BT.photos.get(BT.photoKey.resident(r))) setTimeout(() => viewDoc(doc), 300);
+          });
+          inp.click();
+        },
+        view: (t) => viewDoc(r.docs[+t.dataset.i]),
       });
+      function viewDoc(doc) {
+        BT.audit('Leyó', 'Documento: ' + doc.tipo, { residentId: r.id });
+        BT.docPreview({ title: doc.tipo, sub: BT.fullName(r) + ' · cargado el ' + u.fmtDate(doc.fecha), dataUrl: BT.files.get('resdoc:' + r.id + ':' + doc.tipo), type: doc.file && doc.file.type,
+          onUsePhoto: /Cédula/.test(doc.tipo) && !BT.isRole('familiar') ? (src) => BT.photoEditor({ title: 'Foto de perfil desde la cédula', name: BT.fullName(r), key: BT.photoKey.resident(r), source: src, onSave: () => { BT.audit('Actualizó foto', 'Ficha del residente', { residentId: r.id }); drawer.querySelectorAll('.av-edit').forEach((n) => { n.outerHTML = ui.avatarEdit(BT.fullName(r), BT.photoKey.resident(r)); }); BT.refresh(); } }) : null });
+      }
     }
   }
 

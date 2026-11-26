@@ -169,6 +169,7 @@
     });
     if (!ok) return;
     try { localStorage.removeItem(BT.STORAGE_KEY); } catch (e) { }
+    if (BT.photos) BT.photos.clear();
     BT.db = BT.seed(); BT.db.meta.seedDay = u.todayIso(); BT.db.meta.simAt = Date.now(); BT.save();
     BT.ui.toast('Demo restablecida', { sub: 'Los datos originales se cargaron de nuevo', icon: 'rotate-ccw' });
     BT.shell.render(); BT.render();

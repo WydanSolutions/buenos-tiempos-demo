@@ -312,4 +312,168 @@
   ui.flash = (el) => { if (!el) return; el.classList.remove('flash-ok'); void el.offsetWidth; el.classList.add('flash-ok'); };
   /** Botón de dosis con check animado */
   ui.dose = (state = '', attrs = '', lg) => '<button class="dose ' + state + (lg ? ' lg' : '') + '" ' + attrs + '>' + (state === 'done' ? BT.check : state === 'miss' ? ic('x', 'ic-sm') : state === 'ref' ? ic('hand', 'ic-sm') : ic('plus', 'ic-sm')) + '</button>';
+
+  /* ==========================================================================
+     Fotos de perfil (residentes y personal) y archivos adjuntos
+     En la demo se guardan en el navegador; en producción van al servidor.
+     ========================================================================== */
+  const PKEY = 'bt-photos', FKEY = 'bt-files';
+  let photos = null; let pVer = 0;
+  const loadPhotos = () => { if (photos) return photos; try { photos = JSON.parse(localStorage.getItem(PKEY) || '{}'); } catch (e) { photos = {}; } return photos; };
+  BT.photos = {
+    get: (key) => loadPhotos()[key] || null,
+    set(key, dataUrl) { const p = loadPhotos(); if (dataUrl) p[key] = dataUrl; else delete p[key]; pVer++; try { localStorage.setItem(PKEY, JSON.stringify(p)); return true; } catch (e) { return false; } },
+    clear() { photos = {}; pVer++; try { localStorage.removeItem(PKEY); localStorage.removeItem(FKEY); } catch (e) { /* */ } },
+  };
+  BT.files = {
+    get(id) { try { return JSON.parse(localStorage.getItem(FKEY) || '{}')[id] || null; } catch (e) { return null; } },
+    put(id, dataUrl) { try { const all = JSON.parse(localStorage.getItem(FKEY) || '{}'); all[id] = dataUrl; localStorage.setItem(FKEY, JSON.stringify(all)); return true; } catch (e) { return false; } },
+  };
+  /* Nombre → clave de foto (los avatares se arman por nombre en toda la app) */
+  let nameMap = null; let nameSig = '';
+  const photoForName = (name) => {
+    if (!BT.db || !name) return null;
+    const p = loadPhotos(); if (!Object.keys(p).length) return null;
+    const sig = pVer + '|' + BT.db.residents.length + '|' + BT.db.staff.length + '|' + BT.db.users.length;
+    if (sig !== nameSig) {
+      nameMap = {}; nameSig = sig;
+      BT.db.residents.forEach((r) => { const k = 'res:' + r.id; if (p[k]) { nameMap[BT.fullName(r)] = k; nameMap[BT.shortName(r)] = nameMap[BT.shortName(r)] || k; } });
+      BT.db.staff.forEach((s) => { const k = 'stf:' + s.id; if (p[k]) nameMap[s.nombre] = k; });
+      BT.db.users.forEach((x) => { const k = x.staffId ? 'stf:' + x.staffId : 'usr:' + x.id; if (p[k]) nameMap[x.nombre] = k; });
+    }
+    const k = nameMap[name]; return k ? p[k] : null;
+  };
+  BT.photoKey = { resident: (r) => 'res:' + r.id, staff: (s) => 'stf:' + s.id };
+  const avatarBase = ui.avatar;
+  ui.avatar = function (name, opts = {}) {
+    const src = opts.photo === false ? null : (opts.photo || photoForName(name));
+    if (!src) return avatarBase(name, opts);
+    return '<span class="avatar has-photo ' + (opts.size || '') + (opts.sq ? ' sq' : '') + '"' + (opts.tip ? ' data-tip="' + esc(name) + '"' : '') + '><img src="' + src + '" alt="' + esc(name) + '" loading="lazy" decoding="async"></span>';
+  };
+  /** Avatar grande editable (con botón de cámara) */
+  ui.avatarEdit = (name, key, size = 'xl') => '<button type="button" class="av-edit" data-photo="' + key + '" data-name="' + esc(name) + '" aria-label="Cambiar la foto de ' + esc(name) + '" data-tip="' + (BT.photos.get(key) ? 'Cambiar foto' : 'Agregar foto') + '">' + ui.avatar(name, { size }) + '<span class="av-cam">' + ic('camera', 'ic-xs') + '</span></button>';
+
+  BT.addCSS('photos', `
+    .avatar.has-photo{padding:0;overflow:hidden;background:var(--surface-2)}
+    .avatar.has-photo img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+    .av-edit{position:relative;border:0;background:none;padding:0;cursor:pointer;border-radius:50%;flex:none;display:inline-block;line-height:0}
+    .av-edit .av-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--brand-600);color:#fff;box-shadow:0 0 0 3px #fff,var(--sh-2);transition:transform var(--d-fast) var(--ease)}
+    .av-edit .avatar.lg+.av-cam{width:22px;height:22px;right:-4px;bottom:-4px}
+    .av-edit:hover .av-cam{transform:scale(1.12)}
+    .av-edit:focus-visible{outline:3px solid var(--brand-300);outline-offset:3px}
+    .ph-grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:22px;align-items:start}
+    .ph-stage{position:relative;width:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;background:repeating-conic-gradient(#eeece7 0 25%,#f7f6f2 0 50%) 0 0/22px 22px;touch-action:none;user-select:none}
+    .ph-stage img,.ph-stage video{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;pointer-events:none}
+    .ph-stage video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+    .ph-stage.drag{cursor:grabbing}.ph-stage.has{cursor:grab}
+    .ph-mask{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(circle closest-side at center,transparent 0 94%,rgba(15,20,18,.55) 94.6%)}
+    .ph-mask::after{content:"";position:absolute;inset:3%;border-radius:50%;border:2px dashed rgba(255,255,255,.85)}
+    .ph-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-500);text-align:center;padding:20px}
+    .ph-empty .ic{width:44px;height:44px;color:var(--ink-300);stroke-width:1.5}
+    .ph-zoom{display:flex;align-items:center;gap:10px;margin-top:12px;color:var(--ink-500)}
+    .ph-zoom input{flex:1;accent-color:var(--brand-600)}
+    .ph-side{display:flex;flex-direction:column;gap:12px}
+    .ph-prev{display:flex;align-items:flex-end;gap:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
+    .ph-tip{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--brand-50);border:1px solid var(--brand-100);font-size:var(--fs-sm);color:var(--ink-700)}
+    .ph-tip .ic{color:var(--brand-600);flex:none;margin-top:2px}
+    @media (max-width:760px){.ph-grid{grid-template-columns:1fr}}
+  `);
+
+  const readFile = (f) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(f); });
+  const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+
+  /**
+   * Editor de foto: subir o sacar con la cámara, recortar (arrastrar + zoom) y guardar 360×360.
+   * opts: { title, name, key, hint, source (dataURL inicial), onSave(dataUrl|null) }
+   */
+  BT.photoEditor = function ({ title = 'Foto de perfil', name = '', key, hint, source, onSave } = {}) {
+    const current = key ? BT.photos.get(key) : null;
+    let img = null, scale = 1, minScale = 1, x = 0, y = 0, stream = null;
+    ui.modal({
+      title, icon: 'camera', size: 'lg', sub: name ? 'Para ' + name : '',
+      body: '<div class="ph-grid"><div><div class="ph-stage" id="phStage"><div class="ph-empty" id="phEmpty">' + ic('image-plus') + '<b>Subí una foto o sacala con la cámara</b><span style="font-size:var(--fs-xs)">JPG o PNG · la cara dentro del círculo</span></div><div class="ph-mask"></div></div>' +
+        '<div class="ph-zoom">' + ic('zoom-out', 'ic-sm') + '<input type="range" id="phZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom" disabled>' + ic('zoom-in', 'ic-sm') + '</div></div>' +
+        '<div class="ph-side"><div class="row gap-8 wrap"><label class="btn primary">' + ic('upload') + 'Subir foto<input type="file" id="phFile" accept="image/*" hidden></label><button type="button" class="btn" data-cam>' + ic('camera') + 'Sacar foto</button>' +
+        '<label class="btn ghost hidden" id="phCapLbl">' + ic('smartphone') + 'Cámara del celular<input type="file" id="phCap" accept="image/*" capture="environment" hidden></label></div>' +
+        '<div class="ph-tip">' + ic('lightbulb', 'ic-sm') + '<div>' + (hint || 'Podés usar la <b>foto del carné o de la cédula</b>: sacale una foto al documento y después arrastrá y hacé zoom para dejar la cara dentro del círculo.') + '</div></div>' +
+        '<div><div class="flabel" style="margin-bottom:6px">Así se va a ver</div><div class="ph-prev" id="phPrev">' + ['xl', 'lg', '', 'sm'].map((s) => ui.avatar(name, { size: s, photo: current || false })).join('') + '</div></div></div></div>',
+      foot: (current ? '<button class="btn ghost danger-text" data-del style="margin-right:auto">' + ic('trash-2') + 'Quitar foto</button>' : '') + '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-ok disabled>' + ic('check') + 'Guardar foto</button>',
+      onClose: () => stopCam(),
+      onMount: (el, close) => {
+        const $ = (q) => el.querySelector(q); const stage = $('#phStage'); const zoom = $('#phZoom');
+        const S = () => stage.clientWidth;
+        const clamp = () => { const s = S(); const w = img.naturalWidth * scale, h = img.naturalHeight * scale; x = Math.min(0, Math.max(s - w, x)); y = Math.min(0, Math.max(s - h, y)); };
+        const paint = () => { if (!img) return; clamp(); const t = stage.querySelector('img.ph-img'); if (t) t.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')'; prev(); };
+        const crop = (size = 360) => { const s = S(); const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.drawImage(img, -x / scale, -y / scale, s / scale, s / scale, 0, 0, size, size); return c.toDataURL('image/jpeg', 0.86); };
+        const prev = u.debounce(() => { if (!img) return; const d = crop(160); $('#phPrev').innerHTML = ['xl', 'lg', '', 'sm'].map((s) => ui.avatar(name, { size: s, photo: d })).join(''); }, 60);
+        const use = async (src) => {
+          stopCam(); img = await loadImg(src);
+          stage.querySelectorAll('img.ph-img,video').forEach((n) => n.remove()); $('#phEmpty').classList.add('hidden');
+          const t = document.createElement('img'); t.className = 'ph-img'; t.src = src; t.alt = ''; stage.prepend(t);
+          const s = S(); minScale = Math.max(s / img.naturalWidth, s / img.naturalHeight); scale = minScale;
+          x = (s - img.naturalWidth * scale) / 2; y = (s - img.naturalHeight * scale) / 2;
+          zoom.min = 1; zoom.max = 5; zoom.value = 1; zoom.disabled = false; stage.classList.add('has'); $('[data-ok]').disabled = false; paint();
+        };
+        const take = async (f) => { if (!f) return; if (!/^image\//.test(f.type)) return ui.toast('Elegí una imagen', { type: 'warn', sub: 'JPG o PNG' }); use(await readFile(f)); };
+        $('#phFile').addEventListener('change', (e) => take(e.target.files[0]));
+        $('#phCap').addEventListener('change', (e) => take(e.target.files[0]));
+        zoom.addEventListener('input', () => { if (!img) return; const s = S(); const cx = (s / 2 - x) / scale, cy = (s / 2 - y) / scale; scale = minScale * +zoom.value; x = s / 2 - cx * scale; y = s / 2 - cy * scale; paint(); });
+        stage.addEventListener('wheel', (e) => { if (!img) return; e.preventDefault(); zoom.value = Math.max(1, Math.min(5, +zoom.value - e.deltaY * 0.002)); zoom.dispatchEvent(new Event('input')); }, { passive: false });
+        let drag = null;
+        stage.addEventListener('pointerdown', (e) => { if (!img) return; drag = { px: e.clientX, py: e.clientY, x, y }; stage.setPointerCapture(e.pointerId); stage.classList.add('drag'); });
+        stage.addEventListener('pointermove', (e) => { if (!drag) return; x = drag.x + e.clientX - drag.px; y = drag.y + e.clientY - drag.py; paint(); });
+        const end = () => { drag = null; stage.classList.remove('drag'); };
+        stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+        // Cámara: en vivo si el navegador lo permite; si no, la cámara del celular
+        const camBtn = $('[data-cam]');
+        camBtn.addEventListener('click', async () => {
+          if (stream) { // capturar
+            const v = stage.querySelector('video'); const c = document.createElement('canvas'); const s = Math.min(v.videoWidth, v.videoHeight); c.width = c.height = s;
+            const g = c.getContext('2d'); g.translate(s, 0); g.scale(-1, 1); g.drawImage(v, (v.videoWidth - s) / 2, (v.videoHeight - s) / 2, s, s, 0, 0, s, s);
+            camBtn.innerHTML = ic('camera') + 'Sacar foto'; use(c.toDataURL('image/jpeg', 0.92)); return;
+          }
+          if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { $('#phCap').click(); return; }
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false });
+            stage.querySelectorAll('img.ph-img,video').forEach((n) => n.remove()); $('#phEmpty').classList.add('hidden');
+            const v = document.createElement('video'); v.autoplay = true; v.playsInline = true; v.muted = true; v.srcObject = stream; stage.prepend(v);
+            camBtn.innerHTML = ic('aperture') + 'Capturar'; camBtn.classList.add('primary');
+          } catch (er) { $('#phCapLbl').classList.remove('hidden'); ui.toast('No se pudo abrir la cámara', { type: 'warn', sub: 'Revisá el permiso del navegador o subí la foto' }); }
+        });
+        $('[data-ok]').addEventListener('click', () => {
+          if (!img) return; const d = crop(360);
+          if (key) { const ok = BT.photos.set(key, d); if (!ok) return ui.toast('No hay espacio para guardar la foto', { type: 'warn', sub: 'En la demo las fotos se guardan en el navegador' }); }
+          close(); onSave && onSave(d); ui.toast('Foto guardada', { icon: 'camera', sub: name });
+        });
+        const del = $('[data-del]'); if (del) del.addEventListener('click', () => { if (key) BT.photos.set(key, null); close(); onSave && onSave(null); ui.toast('Foto quitada', { icon: 'trash-2', sub: name }); });
+        if (source) use(source);
+      },
+    });
+    function stopCam() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } }
+  };
+  BT.readFileAsDataURL = readFile;
+  /** Vista previa de un documento adjunto (imagen o PDF) */
+  BT.docPreview = function ({ title, sub, dataUrl, type, onUsePhoto }) {
+    const isImg = dataUrl && (/^image\//.test(type || '') || /^data:image\//.test(dataUrl));
+    ui.modal({ title, sub, icon: 'file-text', size: 'lg',
+      body: dataUrl ? (isImg ? '<div style="display:grid;place-items:center;background:var(--surface-2);border-radius:12px;padding:12px;max-height:64vh;overflow:auto"><img src="' + dataUrl + '" alt="' + esc(title) + '" style="max-width:100%;height:auto;border-radius:8px;box-shadow:var(--sh-2)"></div>' : '<iframe data-pdf title="' + esc(title) + '" style="width:100%;height:64vh;border:0;border-radius:12px;background:#fff"></iframe>')
+        : '<div style="aspect-ratio:1/1.3;max-height:60vh;margin:auto;border-radius:12px;background:linear-gradient(180deg,#fff,#f8f7f4);border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-400)"><div style="text-align:center">' + ic('file-text', 'ic-xl') + '<div class="mt-8">Vista previa del documento escaneado</div><div class="subtle" style="font-size:var(--fs-xs)">(archivo de demostración)</div></div></div>',
+      foot: '<button class="btn ghost" data-close>Cerrar</button>' + (dataUrl ? '<button class="btn" data-dl>' + ic('download') + 'Descargar</button>' : '') + (isImg && onUsePhoto ? '<button class="btn primary" data-use>' + ic('scan-face') + 'Usar como foto de perfil</button>' : ''),
+      onMount: async (el, close) => {
+        const fr = el.querySelector('[data-pdf]'); if (fr) { try { fr.src = URL.createObjectURL(await (await fetch(dataUrl)).blob()); } catch (e) { fr.src = dataUrl; } }
+        const dl = el.querySelector('[data-dl]'); if (dl) dl.addEventListener('click', async () => BT.download(await (await fetch(dataUrl)).blob(), title + (isImg ? '.jpg' : '.pdf')));
+        const us = el.querySelector('[data-use]'); if (us) us.addEventListener('click', () => { close(); setTimeout(() => onUsePhoto(dataUrl), 260); });
+      } });
+  };
+  /* Clic en cualquier avatar editable abre el editor */
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.av-edit[data-photo]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const key = b.dataset.photo; const name = b.dataset.name;
+    BT.photoEditor({ title: BT.photos.get(key) ? 'Cambiar foto' : 'Agregar foto', name, key, onSave: () => {
+      BT.audit('Actualizó foto', key.startsWith('res:') ? 'Ficha del residente' : 'Legajo de personal', { residentId: key.startsWith('res:') ? key.slice(4) : undefined, detail: name });
+      document.querySelectorAll('.av-edit[data-photo="' + key + '"]').forEach((n) => { n.outerHTML = ui.avatarEdit(name, key, n.querySelector('.avatar.lg') ? 'lg' : 'xl'); });
+      if (BT.refresh) BT.refresh();
+    } });
+  }, true);
 })();

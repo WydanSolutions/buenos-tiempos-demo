@@ -53,7 +53,7 @@
 (function () {
   'use strict';
   const BT = window.BT; const u = BT.u;
-  BT.DATA_VERSION = 17;
+  BT.DATA_VERSION = 18;
 
   /* RNG determinístico (los mismos datos en cada restablecimiento) */
   function rngFactory(seed) { let a = seed >>> 0; return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -520,12 +520,12 @@
 
     /* ---------------- Insumos, proveedores y consumo ---------------- */
     db.suppliers = [
-      { id: 'pv1', nombre: 'Distribuidora Andina Insumos Médicos', rubro: 'Material de enfermería', contacto: 'Germán Olivieri', tel: '2900 4471', email: 'ventas@andinainsumos.com.uy', rut: '21 488 301 0011', plazo: '30 días' },
-      { id: 'pv2', nombre: 'Pañalera del Este', rubro: 'Pañales e higiene', contacto: 'Lorena Bica', tel: '2601 8820', email: 'pedidos@panaleradeleste.com.uy', rut: '21 667 120 0018', plazo: '15 días' },
-      { id: 'pv3', nombre: 'Almacén Mayorista La Cumbre', rubro: 'Alimentos secos', contacto: 'Raúl Ifrán', tel: '2208 3315', email: 'mayorista@lacumbre.com.uy', rut: '21 300 551 0014', plazo: '15 días' },
-      { id: 'pv4', nombre: 'Frutas y Verduras Don Ernesto', rubro: 'Frescos', contacto: 'Ernesto Viñas', tel: '099 455 210', email: 'donernesto.frescos@correo.com.uy', rut: '21 721 004 0019', plazo: 'Contado' },
-      { id: 'pv5', nombre: 'Química Limpia Uruguay', rubro: 'Limpieza', contacto: 'Valentina Sanz', tel: '2309 1188', email: 'comercial@quimicalimpia.com.uy', rut: '21 554 870 0013', plazo: '30 días' },
-      { id: 'pv6', nombre: 'Farmacia Central Unión', rubro: 'Medicamentos', contacto: 'Q.F. Sergio Abella', tel: '2506 2299', email: 'institucional@farmaciaunion.com.uy', rut: '21 116 902 0012', plazo: '30 días' },
+      { id: 'pv1', whatsapp: '094 318 220', nombre: 'Distribuidora Andina Insumos Médicos', rubro: 'Material de enfermería', contacto: 'Germán Olivieri', tel: '2900 4471', email: 'ventas@andinainsumos.com.uy', rut: '21 488 301 0011', plazo: '30 días' },
+      { id: 'pv2', whatsapp: '098 601 882', nombre: 'Pañalera del Este', rubro: 'Pañales e higiene', contacto: 'Lorena Bica', tel: '2601 8820', email: 'pedidos@panaleradeleste.com.uy', rut: '21 667 120 0018', plazo: '15 días' },
+      { id: 'pv3', whatsapp: '091 208 331', nombre: 'Almacén Mayorista La Cumbre', rubro: 'Alimentos secos', contacto: 'Raúl Ifrán', tel: '2208 3315', email: 'mayorista@lacumbre.com.uy', rut: '21 300 551 0014', plazo: '15 días' },
+      { id: 'pv4', whatsapp: '099 455 210', nombre: 'Frutas y Verduras Don Ernesto', rubro: 'Frescos', contacto: 'Ernesto Viñas', tel: '099 455 210', email: 'donernesto.frescos@correo.com.uy', rut: '21 721 004 0019', plazo: 'Contado' },
+      { id: 'pv5', whatsapp: '095 309 118', nombre: 'Química Limpia Uruguay', rubro: 'Limpieza', contacto: 'Valentina Sanz', tel: '2309 1188', email: 'comercial@quimicalimpia.com.uy', rut: '21 554 870 0013', plazo: '30 días' },
+      { id: 'pv6', whatsapp: '092 506 229', nombre: 'Farmacia Central Unión', rubro: 'Medicamentos', contacto: 'Q.F. Sergio Abella', tel: '2506 2299', email: 'institucional@farmaciaunion.com.uy', rut: '21 116 902 0012', plazo: '30 días' },
     ];
     const ITEMS = [
       ['Pañales', 'Pañal adulto talle M', 'unidad', 'pv2', 26, true], ['Pañales', 'Pañal adulto talle G', 'unidad', 'pv2', 29, true], ['Pañales', 'Apósito urológico', 'unidad', 'pv2', 14, true], ['Pañales', 'Toallas húmedas x80', 'paquete', 'pv2', 120, false],

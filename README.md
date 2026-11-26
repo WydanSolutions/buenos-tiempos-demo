@@ -40,6 +40,10 @@ Las fechas de los datos se generan relativas al día de hoy, así la demo siempr
 4. **Facturas a Google Drive:** Dirección → Cobranzas → *Facturas* → *Cargar factura* → número de factura + PDF o foto (o *Usar factura de ejemplo*) → vista previa → *Guardar en Drive*. Queda en `Buenos Tiempos / Facturas / año / mes / sede` y vinculada a la cuenta del residente. La facturación se hace en el sistema de facturación de la residencial; acá solo se carga el comprobante.
 5. **Flyer de actividades:** Dirección → Familias → *Flyer de actividades* → elegir la actividad, diseño e ícono → *Enviar por WhatsApp a las familias* o *Descargar imagen* (1080 × 1350).
 
+6. **Fotos:** en la ficha del residente o el legajo de la trabajadora, tocá el avatar (ícono de cámara) → *Subir foto* o *Sacar foto* → arrastrá y hacé zoom → *Guardar foto*. También podés adjuntar la foto de la **cédula** en Documentos y usarla como foto de perfil.
+7. **Compras a proveedores:** Insumos → *Nueva compra* (o el carrito en cualquier artículo, aunque no esté bajo el mínimo) → *Emitir órdenes* → *Enviar por WhatsApp* a cada proveedor.
+8. **Paletas de color:** Configuración → *Apariencia*.
+
 > En la demo, el envío por WhatsApp y el guardado en Google Drive son simulados (los archivos quedan en el navegador). En producción se conectan con la API de WhatsApp Business y la cuenta de Google Drive de la residencial.
 
 ## Exportables

@@ -44,7 +44,7 @@
       eyebrow: 'Insumos y compras', icon: 'boxes', title: 'Stock, consumo y proveedores',
       sub: BT.sedeName() + ' · ' + items.length + ' artículos controlados',
       actions: ui.exportMenu([{ id: 'xls', label: 'Stock en Excel', sub: 'Con mínimos, valorización y proveedor', icon: 'file-spreadsheet' }, { id: 'xlsc', label: 'Consumo por residente (Excel)', sub: 'Mes en curso', icon: 'file-spreadsheet' }]) +
-        '<button class="btn primary" data-act="order" ' + (low.length ? '' : 'disabled') + '>' + ic('shopping-cart') + 'Generar orden' + (low.length ? ' (' + low.length + ')' : '') + '</button>',
+        '<button class="btn primary" data-act="order">' + ic('shopping-cart') + 'Nueva compra' + (low.length ? ' <span class="badge" style="height:18px;padding:0 6px;background:rgba(255,255,255,.22);color:#fff">' + low.length + ' bajos</span>' : '') + '</button>',
     }) +
       '<div class="grid g-4 stagger mb-16">' +
       ui.kpi({ label: 'Bajo el mínimo', value: low.length, icon: 'triangle-alert', tone: low.length ? 'danger' : 'ink', foot: low.length ? 'Reponer cuanto antes' : 'Todo en orden' }) +
@@ -80,12 +80,12 @@
         { label: 'Costo', align: 'num', render: (s) => u.fmtMoney(s.costo) },
         { label: 'Valor', align: 'num', render: (s) => u.fmtMoney(s.stock * s.costo) },
         { label: 'Estado', render: (s) => (s.stock < s.minimo * 0.5 ? ui.badge('Crítico', 'danger', { dot: true }) : s.stock < s.minimo ? ui.badge('Bajo mínimo', 'warn', { dot: true }) : ui.badge('OK', 'ok', { dot: true })) },
-        { label: '', align: 'num', render: (s) => '<div class="row gap-4" style="justify-content:flex-end"><button class="btn xs" data-act="in" data-id="' + s.id + '" data-tip="Registrar ingreso">' + ic('package-plus') + 'Ingreso</button><button class="btn xs ghost" data-act="adj" data-id="' + s.id + '" data-tip="Ajustar por inventario">' + ic('sliders-horizontal') + '</button></div>' },
+        { label: '', align: 'num', render: (s) => '<div class="row gap-4" style="justify-content:flex-end"><button class="btn xs" data-act="in" data-id="' + s.id + '" data-tip="Registrar ingreso">' + ic('package-plus') + 'Ingreso</button><button class="btn xs ghost" data-act="buy" data-id="' + s.id + '" data-tip="Comprar este artículo">' + ic('shopping-cart') + '</button><button class="btn xs ghost" data-act="adj" data-id="' + s.id + '" data-tip="Ajustar por inventario">' + ic('sliders-horizontal') + '</button></div>' },
       ], items, { rowAttrs: (s) => (s.stock < s.minimo * 0.5 ? 'class="row-flag-danger"' : s.stock < s.minimo ? 'class="row-flag-warn"' : ''), empty: { ill: 'search', title: 'Sin artículos', text: 'No hay artículos que coincidan con el filtro.' } }) + '</div></section>';
     p.querySelector('.seg[data-seg="inscat"]').addEventListener('segchange', (e) => { BT.state.sub.insCat = e.detail.value; renderStock(p); ui.enhance(p); });
     const qi = p.querySelector('#insQ');
     qi.addEventListener('input', u.debounce(() => { BT.state.sub.insQ = qi.value; const pos = qi.selectionStart; renderStock(p); ui.enhance(p); const n = p.querySelector('#insQ'); n.focus(); n.setSelectionRange(pos, pos); }, 220));
-    ui.on(p, { in: (t) => moveFlow(t.dataset.id, 'in'), adj: (t) => moveFlow(t.dataset.id, 'adj') });
+    ui.on(p, { in: (t) => moveFlow(t.dataset.id, 'in'), adj: (t) => moveFlow(t.dataset.id, 'adj'), buy: (t) => orderFlow(t.dataset.id) });
   }
   function moveFlow(id, mode) {
     const s = BT.db.stock.find((x) => x.id === id); if (!s) return;
@@ -188,7 +188,7 @@
   /* ---------------- Órdenes de compra ---------------- */
   function renderOrders(p) {
     const list = BT.bySede(BT.db.purchases).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
-    p.innerHTML = '<section class="card"><div class="card-h"><div><h3>' + ic('shopping-cart') + 'Órdenes de compra</h3><div class="sub">Últimas compras y entregas pendientes</div></div><button class="btn sm primary" data-act="order" ' + (lowItems().length ? '' : 'disabled') + '>' + ic('wand-sparkles') + 'Generar desde stock bajo</button></div><div class="card-b flush">' +
+    p.innerHTML = '<section class="card"><div class="card-h"><div><h3>' + ic('shopping-cart') + 'Órdenes de compra</h3><div class="sub">Últimas compras y entregas pendientes</div></div><button class="btn sm primary" data-act="order">' + ic('shopping-cart') + 'Nueva compra</button></div><div class="card-b flush">' +
       ui.table([
         { label: 'Nº', render: (o) => '<span class="num strong">OC-' + String(o.id).replace(/\D/g, '').padStart(4, '0').slice(-4) + '</span>' },
         { label: 'Fecha', align: 'num', render: (o) => u.fmtDate(o.fecha) },
@@ -197,10 +197,11 @@
         { label: 'Detalle', render: (o) => '<span class="muted" style="font-size:var(--fs-sm)">' + esc(o.items) + '</span>' },
         { label: 'Total', align: 'num', render: (o) => '<span class="strong">' + u.fmtMoney(o.total) + '</span>' },
         { label: 'Estado', render: (o) => (o.estado === 'Recibida' ? ui.badge('Recibida', 'ok', { icon: 'check' }) : ui.badge(o.estado, 'warn', { dot: true })) },
-        { label: '', align: 'num', render: (o) => (o.estado !== 'Recibida' ? '<button class="btn xs" data-act="recv" data-id="' + o.id + '">' + ic('package-check') + 'Recibir</button>' : '') },
-      ], list, { empty: { ill: 'default', title: 'Sin órdenes', text: 'Generá una orden desde los artículos bajo el mínimo.' } }) + '</div></section>';
+        { label: '', align: 'num', render: (o) => '<div class="row gap-4" style="justify-content:flex-end">' + (o.estado !== 'Recibida' ? '<button class="btn xs ghost" data-act="wa" data-id="' + o.id + '" data-tip="' + (o.waEnviado ? 'Enviado por WhatsApp · reenviar' : 'Enviar pedido por WhatsApp') + '" style="color:#128c4a">' + ic(o.waEnviado ? 'check-check' : 'message-circle') + '</button><button class="btn xs" data-act="recv" data-id="' + o.id + '">' + ic('package-check') + 'Recibir</button>' : '') + '</div>' },
+      ], list, { empty: { ill: 'default', title: 'Sin órdenes', text: 'Creá una compra con el botón «Nueva compra».' } }) + '</div></section>';
     ui.on(p, {
       order: () => orderFlow(),
+      wa: (t) => waOrder(BT.db.purchases.find((x) => x.id === t.dataset.id), () => BT.refresh()),
       recv: (t) => {
         const o = BT.db.purchases.find((x) => x.id === t.dataset.id);
         o.estado = 'Recibida';
@@ -212,35 +213,108 @@
       },
     });
   }
-  function orderFlow() {
-    const low = lowItems(); if (!low.length) return;
-    const bySup = u.groupBy(low, (s) => s.proveedorId + '|' + s.sede);
-    const sug = (s) => Math.max(1, Math.ceil(s.minimo * 2 - s.stock));
+  /* En la demo los números de los proveedores son ficticios: WhatsApp se abre con el mensaje listo y se elige el contacto. */
+  const DEMO_WA = true;
+  const ocNum = (o) => 'OC-' + String(o.id).replace(/\D/g, '').padStart(4, '0').slice(-4);
+  const waDigits = (tel) => { const d = String(tel || '').replace(/\D/g, ''); return d ? (d.startsWith('598') ? d : '598' + d.replace(/^0/, '')) : ''; };
+  const orderText = (o) => {
+    const sp = supplier(o.proveedorId); const sObj = BT.db.sedes.find((x) => x.id === o.sede);
+    const lines = (o.lines || []).map((l) => { const it = BT.db.stock.find((s) => s.id === l.itemId); return '• ' + (it ? it.item : 'Artículo') + ' × ' + u.fmtNum(l.qty) + (it ? ' ' + it.unidad + (l.qty > 1 && it.unidad === 'unidad' ? 'es' : l.qty > 1 ? 's' : '') : ''); });
+    return 'Hola ' + (sp.contacto || '').replace(/^(Q\.F\.|Dr\.|Dra\.|Lic\.)\s*/, '').split(' ')[0] + ', te escribimos de *Residencial Buenos Tiempos* 🌿\n' +
+      'Les hacemos el siguiente pedido (*' + ocNum(o) + '*):\n\n' + (lines.length ? lines.join('\n') : o.items) + '\n\n' +
+      'Total estimado: ' + u.fmtMoney(o.total) + '\nEntregar en: ' + (sObj ? sObj.nombre + ' · ' + sObj.direccion + ', ' + sObj.barrio : '') + '\nPago a ' + (sp.plazo || 'convenir') + '. ¡Gracias!';
+  };
+  /** Enviar una orden al proveedor por WhatsApp (vista previa + abre WhatsApp con el mensaje listo) */
+  function waOrder(o, after) {
+    const sp = supplier(o.proveedorId); const num = waDigits(sp.whatsapp || sp.tel);
+    const fmt = (t) => esc(t).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
     ui.modal({
-      title: 'Generar órdenes de compra', sub: low.length + ' artículos bajo el mínimo · cantidades sugeridas para llegar al doble del mínimo', icon: 'shopping-cart', size: 'lg',
-      body: Object.entries(bySup).map(([k, arr]) => {
-        const [pid, sede] = k.split('|'); const sp = supplier(pid);
-        return '<div class="card mb-16" style="box-shadow:none"><div class="card-h"><div><h3 style="font-size:var(--fs-md)">' + ic('truck') + esc(sp.nombre) + ' ' + BT.sedeTag(sede) + '</h3><div class="sub">' + esc(sp.contacto || '') + ' · ' + esc(sp.tel || '') + ' · Pago a ' + esc(sp.plazo || '—') + '</div></div></div><div class="card-b" style="padding-top:10px">' +
-          arr.map((s) => '<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--ink-100)"><div class="grow"><div class="strong" style="font-size:var(--fs-md)">' + esc(s.item) + '</div><div class="muted" style="font-size:var(--fs-xs)">Stock ' + u.fmtNum(s.stock) + ' · mínimo ' + u.fmtNum(s.minimo) + ' · ' + u.fmtMoney(s.costo) + ' c/u</div></div><input class="input ins-qty num" type="number" min="0" data-item="' + s.id + '" value="' + sug(s) + '"><span class="muted" style="width:62px;font-size:var(--fs-xs)">' + esc(s.unidad) + '</span></div>').join('') +
-          '</div></div>';
-      }).join('') + '<div class="row between"><span class="muted">Total estimado</span><span class="strong num" id="ocTot" style="font-size:var(--fs-xl)"></span></div>',
+      title: 'Enviar pedido por WhatsApp', icon: 'message-circle', size: 'lg', sub: ocNum(o) + ' · ' + sp.nombre + (DEMO_WA ? ' · en la demo elegís el contacto en WhatsApp' : ''),
+      body: '<div class="grid g-2" style="align-items:start"><div class="col gap-12"><div class="field"><label>Para</label><div class="row gap-8">' + ui.avatar(sp.nombre, { size: 'sm' }) + '<div><div class="strong">' + esc(sp.contacto || sp.nombre) + '</div><div class="muted" style="font-size:var(--fs-xs)">' + esc(sp.nombre) + ' · WhatsApp ' + esc(sp.whatsapp || sp.tel || '—') + '</div></div></div></div>' +
+        ui.field({ label: 'Mensaje', name: 'msg', type: 'textarea', value: orderText(o), attrs: 'rows="11"' }) + '</div>' +
+        '<div><div class="flabel" style="margin-bottom:6px">Vista previa</div><div class="wa"><div class="wa-top">' + ui.avatar(sp.nombre, { size: 'sm' }) + '<div><div style="font-weight:600;font-size:var(--fs-md)">' + esc(sp.contacto || sp.nombre) + '</div><div style="font-size:11px;opacity:.75">' + esc(sp.nombre) + '</div></div></div><div class="wa-b" id="waOB" style="white-space:pre-wrap">' + fmt(orderText(o)) + '<div class="wa-meta">' + u.fmtTime(new Date()) + ' ' + ic('check-check', 'ic-xs') + '</div></div></div></div></div>',
+      foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn" data-copy>' + ic('copy') + 'Copiar texto</button><button class="btn primary" data-wa style="background:linear-gradient(180deg,#25d366,#1da851);border-color:#179443">' + ic('message-circle') + 'Abrir WhatsApp</button>',
+      onMount: (el, close) => {
+        const ta = el.querySelector('[name=msg]');
+        ta.addEventListener('input', () => { el.querySelector('#waOB').innerHTML = fmt(ta.value) + '<div class="wa-meta">' + u.fmtTime(new Date()) + ' ' + ic('check-check', 'ic-xs') + '</div>'; });
+        el.querySelector('[data-copy]').addEventListener('click', async () => { try { await navigator.clipboard.writeText(ta.value); ui.toast('Texto copiado', { icon: 'copy' }); } catch (e) { ta.select(); } });
+        el.querySelector('[data-wa]').addEventListener('click', () => {
+          window.open('https://wa.me/' + (DEMO_WA ? '' : num) + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener');
+          o.waEnviado = Date.now(); BT.audit('Envió pedido por WhatsApp', 'Órdenes de compra', { sede: o.sede, detail: ocNum(o) + ' a ' + sp.nombre });
+          BT.save(); close(); ui.toast('Pedido listo en WhatsApp', { icon: 'message-circle', sub: sp.nombre + ' · ' + ocNum(o) }); after && after();
+        });
+      },
+    });
+  }
+
+  /**
+   * Nueva compra: se puede comprar cualquier artículo, haya o no stock bajo.
+   * Los artículos bajo el mínimo vienen sugeridos; el resto se agrega con cantidad.
+   */
+  function orderFlow(onlyId) {
+    const all = BT.bySede(BT.db.stock); const low = lowItems();
+    const sug = (s) => Math.max(1, Math.ceil(s.minimo * 2 - s.stock));
+    const qty = {}; // itemId → cantidad
+    if (onlyId) { const s = all.find((x) => x.id === onlyId); if (s) qty[s.id] = s.stock < s.minimo ? sug(s) : Math.max(1, Math.ceil(s.minimo)); }
+    else low.forEach((s) => { qty[s.id] = sug(s); });
+    let show = onlyId || !low.length ? 'todos' : 'bajos'; let q = '';
+    ui.modal({
+      title: 'Nueva compra', icon: 'shopping-cart', size: 'lg',
+      sub: low.length ? low.length + ' artículos bajo el mínimo ya vienen sugeridos · podés sumar cualquier otro' : 'Elegí los artículos y las cantidades a comprar',
+      body: '<div class="row between wrap gap-8 mb-12">' + ui.seg('ocShow', [{ id: 'bajos', label: 'Bajo el mínimo (' + low.length + ')' }, { id: 'todos', label: 'Todos los artículos (' + all.length + ')' }], show, 'sm') +
+        '<div style="position:relative;width:min(240px,100%)"><span style="position:absolute;left:12px;top:8px;color:var(--ink-400)">' + ic('search', 'ic-sm') + '</span><input class="input" id="ocQ" placeholder="Buscar artículo…" style="height:34px;min-height:34px;padding-left:34px;border-radius:99px"></div></div>' +
+        '<div id="ocList" style="max-height:52vh;overflow:auto;margin:0 -4px;padding:0 4px"></div>' +
+        '<div class="row between mt-16"><span class="muted" id="ocCount"></span><span class="strong num" id="ocTot" style="font-size:var(--fs-xl)"></span></div>' +
+        '<label class="row mt-12" style="gap:10px;font-size:var(--fs-md)"><span class="switch"><input type="checkbox" id="ocWa" checked><span></span></span>Enviar el pedido a cada proveedor por WhatsApp</label>',
       foot: '<button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-save>' + ic('send') + 'Emitir órdenes</button>',
       onMount: (m, close) => {
-        const tot = () => { const t = u.sum([...m.querySelectorAll('[data-item]')], (i) => (+i.value || 0) * BT.db.stock.find((s) => s.id === i.dataset.item).costo); m.querySelector('#ocTot').textContent = u.fmtMoney(t); return t; };
-        tot(); m.querySelectorAll('[data-item]').forEach((i) => i.addEventListener('input', tot));
+        const list = m.querySelector('#ocList');
+        const draw = () => {
+          let items = show === 'bajos' ? all.filter((s) => s.stock < s.minimo || qty[s.id] > 0) : all;
+          if (q) items = items.filter((s) => u.norm(s.item + ' ' + supplier(s.proveedorId).nombre).includes(u.norm(q)));
+          const groups = u.groupBy(items, (s) => s.proveedorId + '|' + s.sede);
+          list.innerHTML = Object.keys(groups).length ? Object.entries(groups).map(([k, arr]) => {
+            const [pid, sede] = k.split('|'); const sp = supplier(pid);
+            return '<div class="card mb-12" style="box-shadow:none"><div class="card-h" style="padding:12px 14px"><div><h3 style="font-size:var(--fs-md)">' + ic('truck') + esc(sp.nombre) + ' ' + BT.sedeTag(sede) + '</h3><div class="sub">' + esc(sp.contacto || '') + ' · Pago a ' + esc(sp.plazo || '—') + '</div></div></div><div class="card-b" style="padding:4px 14px 10px">' +
+              arr.map((s) => '<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--ink-100);gap:10px"><div class="grow" style="min-width:0"><div class="strong ellipsis" style="font-size:var(--fs-md)">' + esc(s.item) + ' ' + (s.stock < s.minimo ? ui.badge('Bajo mínimo', s.stock < s.minimo * 0.5 ? 'danger' : 'warn', { dot: true }) : '') + '</div><div class="muted" style="font-size:var(--fs-xs)">Stock ' + u.fmtNum(s.stock) + ' · mínimo ' + u.fmtNum(s.minimo) + ' · ' + u.fmtMoney(s.costo) + ' c/u</div></div>' +
+                '<input class="input ins-qty num" type="number" min="0" data-item="' + s.id + '" value="' + (qty[s.id] || 0) + '" aria-label="Cantidad de ' + esc(s.item) + '"><span class="muted" style="width:58px;font-size:var(--fs-xs)">' + esc(s.unidad) + '</span></div>').join('') + '</div></div>';
+          }).join('') : ui.empty({ ill: 'search', title: 'Sin artículos', text: show === 'bajos' ? 'No hay artículos bajo el mínimo. Pasá a «Todos los artículos» para comprar igual.' : 'Probá con otra búsqueda.' });
+          tot();
+        };
+        const tot = () => {
+          const ids = Object.keys(qty).filter((k) => qty[k] > 0);
+          const t = u.sum(ids, (k) => qty[k] * (BT.db.stock.find((s) => s.id === k) || { costo: 0 }).costo);
+          m.querySelector('#ocTot').textContent = u.fmtMoney(t);
+          m.querySelector('#ocCount').textContent = ids.length ? ids.length + (ids.length === 1 ? ' artículo' : ' artículos') + ' · ' + new Set(ids.map((k) => { const s = BT.db.stock.find((x) => x.id === k); return s.proveedorId + s.sede; })).size + ' proveedor(es)' : 'Ningún artículo elegido';
+          m.querySelector('[data-save]').disabled = !ids.length; return t;
+        };
+        list.addEventListener('input', (e) => { const i = e.target.closest('[data-item]'); if (!i) return; qty[i.dataset.item] = Math.max(0, +i.value || 0); tot(); });
+        m.querySelector('.seg').addEventListener('segchange', (e) => { show = e.detail.value; draw(); });
+        m.querySelector('#ocQ').addEventListener('input', u.debounce((e) => { q = e.target.value; draw(); }, 150));
+        draw();
         m.querySelector('[data-save]').addEventListener('click', () => {
-          let n = 0;
-          Object.entries(bySup).forEach(([k, arr]) => {
+          const ids = Object.keys(qty).filter((k) => qty[k] > 0); if (!ids.length) return;
+          const groups = u.groupBy(ids.map((k) => BT.db.stock.find((s) => s.id === k)), (s) => s.proveedorId + '|' + s.sede);
+          const created = Object.entries(groups).map(([k, arr]) => {
             const [pid, sede] = k.split('|');
-            const lines = arr.map((s) => ({ itemId: s.id, qty: Math.max(0, +m.querySelector('[data-item="' + s.id + '"]').value || 0) })).filter((l) => l.qty > 0);
-            if (!lines.length) return;
-            const total = u.sum(lines, (l) => l.qty * BT.db.stock.find((s) => s.id === l.itemId).costo);
-            BT.db.purchases.push({ id: u.uid('oc'), proveedorId: pid, sede, fecha: u.todayIso(), items: lines.map((l) => BT.db.stock.find((s) => s.id === l.itemId).item + ' × ' + u.fmtNum(l.qty)).join(', '), total: Math.round(total), estado: 'Pendiente de entrega', lines });
-            n++;
+            const lines = arr.map((s) => ({ itemId: s.id, qty: qty[s.id] }));
+            const o = { id: u.uid('oc'), proveedorId: pid, sede, fecha: u.todayIso(), items: lines.map((l) => BT.db.stock.find((s) => s.id === l.itemId).item + ' × ' + u.fmtNum(l.qty)).join(', '), total: Math.round(u.sum(lines, (l) => l.qty * BT.db.stock.find((s) => s.id === l.itemId).costo)), estado: 'Pendiente de entrega', lines };
+            BT.db.purchases.push(o); return o;
           });
-          BT.audit('Creó', 'Órdenes de compra', { detail: n + ' órdenes por ' + u.fmtMoney(tot()) });
-          BT.save(); close(); BT.state.sub.ins = 'ordenes'; BT.refresh();
-          ui.toast(n + ' orden' + (n === 1 ? '' : 'es') + ' emitida' + (n === 1 ? '' : 's'), { sub: 'Enviadas a los proveedores por correo (simulado)', icon: 'send' });
+          const total = u.sum(created, 'total'); const wa = m.querySelector('#ocWa').checked;
+          BT.audit('Creó', 'Órdenes de compra', { detail: created.length + ' órdenes por ' + u.fmtMoney(total) });
+          BT.save(); BT.state.sub.ins = 'ordenes'; BT.refresh(); BT.shell.updateNav();
+          if (!wa) { close(); ui.toast(created.length + (created.length === 1 ? ' orden emitida' : ' órdenes emitidas'), { sub: u.fmtMoney(total), icon: 'send' }); return; }
+          // Pantalla final: enviar cada orden por WhatsApp
+          const bodyEl = m.querySelector('.modal-b');
+          const paint = () => {
+            bodyEl.innerHTML = '<div class="up-done" style="text-align:center;padding:6px 0 14px"><span class="up-ok" style="width:56px;height:56px;border-radius:50%;display:inline-grid;place-items:center;background:var(--ok);color:#fff">' + BT.check + '</span><h3 class="mt-12" style="font-size:var(--fs-xl)">' + created.length + (created.length === 1 ? ' orden emitida' : ' órdenes emitidas') + ' · ' + u.fmtMoney(total) + '</h3><p class="muted">Mandale el pedido a cada proveedor por WhatsApp</p></div>' +
+              '<div class="list" style="border:1px solid var(--line);border-radius:var(--r-md)">' + created.map((o) => { const sp = supplier(o.proveedorId); return '<div class="li"><span class="li-ic brand">' + ic('truck', 'ic-sm') + '</span><div class="grow"><div class="t">' + esc(sp.nombre) + ' ' + BT.sedeTag(o.sede) + '</div><div class="d">' + ocNum(o) + ' · ' + u.fmtMoney(o.total) + ' · ' + esc(sp.whatsapp || sp.tel || '') + '</div></div>' + (o.waEnviado ? ui.badge('Enviado', 'ok', { icon: 'check-check' }) : '<button class="btn sm" data-wao="' + o.id + '" style="color:#128c4a;border-color:#bfe6cf">' + ic('message-circle') + 'Enviar por WhatsApp</button>') + '</div>'; }).join('') + '</div>';
+            m.querySelector('.modal-f').innerHTML = '<button class="btn primary" data-done>' + ic('check') + 'Listo</button>';
+            m.querySelector('[data-done]').addEventListener('click', () => { close(); BT.refresh(); });
+            bodyEl.querySelectorAll('[data-wao]').forEach((b) => b.addEventListener('click', () => waOrder(created.find((o) => o.id === b.dataset.wao), paint)));
+          };
+          paint();
         });
       },
     });
@@ -253,7 +327,7 @@
       const items = BT.bySede(BT.db.stock).filter((i) => i.proveedorId === s.id);
       const low = items.filter((i) => i.stock < i.minimo).length;
       return '<section class="card hover ins-sup"><div class="top">' + ui.avatar(s.nombre, { size: 'lg', sq: true }) + '<div class="grow" style="min-width:0"><div class="strong ellipsis">' + esc(s.nombre) + '</div><div class="muted" style="font-size:var(--fs-sm)">' + esc(s.rubro) + '</div></div>' + (low ? ui.badge(low + ' a reponer', 'warn', { dot: true }) : '') + '</div>' +
-        ui.kv([['Contacto', esc(s.contacto)], ['Teléfono', '<span class="num">' + esc(s.tel) + '</span>'], ['Correo', '<span style="font-size:var(--fs-sm)">' + esc(s.email) + '</span>'], ['RUT', '<span class="num">' + esc(s.rut) + '</span>'], ['Plazo de pago', esc(s.plazo)]]) +
+        ui.kv([['Contacto', esc(s.contacto)], ['Teléfono', '<span class="num">' + esc(s.tel) + '</span>'], ['WhatsApp', s.whatsapp ? '<span class="num" style="color:#128c4a">' + esc(s.whatsapp) + '</span>' : '—'], ['Correo', '<span style="font-size:var(--fs-sm)">' + esc(s.email) + '</span>'], ['RUT', '<span class="num">' + esc(s.rut) + '</span>'], ['Plazo de pago', esc(s.plazo)]]) +
         '<div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span class="muted" style="font-size:var(--fs-sm)">' + ocs.length + ' órdenes · ' + items.length + ' artículos</span><span class="strong num">' + u.fmtMoney(u.sum(ocs, 'total')) + '</span></div></section>';
     }).join('') + '</div>';
   }
